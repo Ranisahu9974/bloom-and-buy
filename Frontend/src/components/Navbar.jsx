@@ -6,7 +6,7 @@ import { productsAPI } from '../utils/api';
 import UserAvatar from './UserAvatar';
 import {
     FiShoppingCart, FiUser, FiLogOut, FiShield,
-    FiHome, FiPackage, FiStar, FiSearch, FiMenu, FiX, FiGrid, FiShoppingBag
+    FiHome, FiPackage, FiStar, FiSearch, FiMenu, FiX, FiGrid, FiShoppingBag, FiHeart, FiSun, FiMoon
 } from 'react-icons/fi';
 
 const Logo = () => (
@@ -19,15 +19,28 @@ const Logo = () => (
 
 const Navbar = () => {
     const { user, isAuthenticated, isAdmin, isSeller, logout } = useAuth();
-    const { itemCount } = useCart();
+    const { itemCount, openDrawer } = useCart();
     const location = useLocation();
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
+
+    // Apply Theme
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
     // Close menu on route change
     useEffect(() => {
@@ -71,8 +84,7 @@ const Navbar = () => {
         { to: '/', icon: <FiHome size={15} />, label: 'Home' },
         { to: '/products', icon: <FiGrid size={15} />, label: 'Shop' },
         { to: '/orders', icon: <FiPackage size={15} />, label: 'Orders' },
-        { to: '/membership', icon: <FiStar size={15} />, label: 'Membership' },
-        ...(isAdmin ? [{ to: '/admin', icon: <FiShield size={15} />, label: 'Admin' }] : []),
+        ...(isAdmin ? [{ to: '/admin', icon: <FiShield size={15} />, label: 'Dashboard' }] : []),
         ...(isSeller ? [{ to: '/seller', icon: <FiShoppingBag size={15} />, label: 'Seller Panel' }] : []),
     ] : [
         { to: '/', icon: <FiHome size={15} />, label: 'Home' },
@@ -86,8 +98,7 @@ const Navbar = () => {
                     {/* Logo wrapper */}
                     <Link to="/" className="navbar-brand">
                         <Logo />
-                        {/* We hide the text because the new logo image already has "BLOOM AND BUY" text embedded, or we keep it if the logo image is just the icon. Let's conditionally show it or just rely on the new graphic which is stylish. */}
-                        <span style={{ display: 'none' }}>Bloom <span style={{ color: 'var(--action-light)' }}>&</span> Buy</span>
+                        <span style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#fff' }}>Bloom <span style={{ color: '#ff9900' }}>&</span> Buy</span>
                     </Link>
 
                     {/* Search bar */}
@@ -137,21 +148,23 @@ const Navbar = () => {
                             </Link>
                         ))}
 
+                        <button className="nav-link" onClick={toggleTheme} title="Toggle Theme" style={{ background: 'transparent', border: 'none' }}>
+                            {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
+                        </button>
+
                         {isAuthenticated ? (
                             <>
-                                <Link to="/cart" className={`nav-link ${isActive('/cart')}`} style={{ position: 'relative' }}>
+                                <Link to="/wishlist" className={`nav-link ${isActive('/wishlist')}`}>
+                                    <FiHeart size={15} /><span>Wishlist</span>
+                                </Link>
+                                <button className={`nav-link ${isActive('/cart')}`} onClick={openDrawer} style={{ position: 'relative', background: 'transparent', border: 'none' }}>
                                     <FiShoppingCart size={15} />
                                     <span>Cart</span>
                                     {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
-                                </Link>
+                                </button>
                                 <Link to="/profile" className={`nav-link ${isActive('/profile')}`}>
                                     <UserAvatar user={user} size={22} />
-                                    <span>{user?.name?.split(' ')[0]}</span>
-                                    {user?.membershipTier && (
-                                        <span className={`tier-badge ${user.membershipTier.toLowerCase()}`}>
-                                            {user.membershipTier}
-                                        </span>
-                                    )}
+                                    <span>{isAdmin ? 'Dashboard' : user?.name?.split(' ')[0]}</span>
                                 </Link>
                                 <button className="nav-link" onClick={logout} title="Logout">
                                     <FiLogOut size={15} />
@@ -193,13 +206,17 @@ const Navbar = () => {
                         {l.icon}<span>{l.label}</span>
                     </Link>
                 ))}
+                
+                <button className="nav-link" onClick={toggleTheme} style={{ width: '100%', justifyContent: 'flex-start', background: 'transparent', border: 'none' }}>
+                    {theme === 'light' ? <FiMoon size={15} /> : <FiSun size={15} />}<span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+                </button>
                 {isAuthenticated ? (
                     <>
-                        <Link to="/cart" className={`nav-link ${isActive('/cart')}`}>
+                        <button className={`nav-link ${isActive('/cart')}`} onClick={() => { openDrawer(); setMenuOpen(false); }} style={{ width: '100%', justifyContent: 'flex-start', background: 'transparent', border: 'none' }}>
                             <FiShoppingCart size={15} /><span>Cart {itemCount > 0 && `(${itemCount})`}</span>
-                        </Link>
+                        </button>
                         <Link to="/profile" className={`nav-link ${isActive('/profile')}`}>
-                            <UserAvatar user={user} size={22} /><span>{user?.name}</span>
+                            <UserAvatar user={user} size={22} /><span>{isAdmin ? 'Dashboard' : user?.name}</span>
                         </Link>
                         <button className="nav-link" onClick={logout} style={{ width: '100%', justifyContent: 'flex-start' }}>
                             <FiLogOut size={15} /><span>Logout</span>

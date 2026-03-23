@@ -10,15 +10,23 @@ const OrderTrackingPage = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchTracking();
+        if (id) {
+            // Defensive check: strip /track if it accidentally got captured (though router fix should prevent this)
+            const cleanId = id.split('/')[0];
+            fetchTracking(cleanId);
+        }
     }, [id]);
-
-    const fetchTracking = async () => {
+    
+    const fetchTracking = async (orderId) => {
         try {
-            const { data } = await ordersAPI.track(id);
+            setLoading(true);
+            console.log('Fetching tracking for order:', orderId);
+            const { data } = await ordersAPI.track(orderId);
             setTracking(data);
         } catch (error) {
+            console.error('Tracking fetch error:', error);
             toast.error('Failed to load tracking info');
+            setTracking(null);
         } finally {
             setLoading(false);
         }
@@ -110,12 +118,53 @@ const OrderTrackingPage = () => {
                             )}
                         </div>
 
+                        {/* Delivery Map Graphic */}
+                        <div className="glass-card" style={{ padding: '28px', marginBottom: '24px' }}>
+                            <h3 style={{ fontSize: '1.1rem', marginBottom: '32px' }}>Delivery Route</h3>
+                            <div className="delivery-map-container">
+                                <div className="location-node origin">
+                                    <div className="node-dot"><FiPackage /></div>
+                                    <div className="node-label">
+                                        <span className="label-title">Shipped From</span>
+                                        <span className="label-city">{tracking.originCity || 'Warehouse'}</span>
+                                    </div>
+                                </div>
+
+                                <div className="delivery-path">
+                                    <div className="path-line"></div>
+                                    <div 
+                                        className="path-progress" 
+                                        style={{ 
+                                            width: (tracking.steps.filter(s => s.completed).length / tracking.steps.length) * 100 + '%' 
+                                        }}
+                                    ></div>
+                                    <div 
+                                        className="delivery-truck-icon"
+                                        style={{ 
+                                            left: (tracking.steps.filter(s => s.completed).length / tracking.steps.length) * 100 + '%',
+                                            transform: 'translateX(-50%) ' + (tracking.currentStatus === 'Delivered' ? 'scale(0)' : 'scale(1)')
+                                        }}
+                                    >
+                                        <FiTruck />
+                                    </div>
+                                </div>
+
+                                <div className={'location-node destination ' + (tracking.currentStatus === 'Delivered' ? 'reached' : '')}>
+                                    <div className="node-dot"><FiHome /></div>
+                                    <div className="node-label">
+                                        <span className="label-title">Destination</span>
+                                        <span className="label-city">{tracking.destinationCity || 'Customer'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Timeline */}
                         <div className="glass-card" style={{ padding: '28px' }}>
                             <h3 style={{ fontSize: '1.1rem', marginBottom: '24px' }}>Delivery Progress</h3>
                             <div className="tracking-timeline">
                                 {(tracking.steps || []).map((step, i) => (
-                                    <div key={i} className={`tracking-step ${step.completed ? (step.current ? 'current' : 'completed') : ''}`}>
+                                    <div key={i} className={'tracking-step ' + (step.completed ? (step.current ? 'current' : 'completed') : '')}>
                                         <div className="step-icon">
                                             {getStepIcon(step.name, step.completed, step.current)}
                                         </div>

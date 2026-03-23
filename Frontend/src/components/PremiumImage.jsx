@@ -1,8 +1,13 @@
 import { useState } from 'react';
 
-const PremiumImage = ({ src, alt, className = '', style = {} }) => {
+const PremiumImage = ({ src, alt, className = '', style = {}, onImageError }) => {
     const [hasError, setHasError] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
+
+    const handleError = () => {
+        setHasError(true);
+        if (onImageError) onImageError();
+    };
 
     if (hasError || !src) {
         return (
@@ -49,7 +54,7 @@ const PremiumImage = ({ src, alt, className = '', style = {} }) => {
                 alt={alt}
                 loading="lazy"
                 onLoad={() => setIsLoaded(true)}
-                onError={() => setHasError(true)}
+                onError={handleError}
                 style={{
                     width: '100%',
                     height: '100%',

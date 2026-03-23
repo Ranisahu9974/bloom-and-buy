@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiShoppingCart, FiStar } from 'react-icons/fi';
+import { FiShoppingCart, FiStar, FiHeart, FiCheck } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { wishlistAPI } from '../utils/api';
 import { formatINR } from '../utils/currency';
 import toast from 'react-hot-toast';
 import PremiumImage from './PremiumImage';
@@ -10,6 +12,9 @@ const ProductCard = ({ product }) => {
     const navigate = useNavigate();
     const { addToCart } = useCart();
     const { isAuthenticated } = useAuth();
+    const [imageError, setImageError] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const [isAdded, setIsAdded] = useState(false);
 
     const handleAddToCart = async (e) => {
         e.stopPropagation();
@@ -19,10 +24,16 @@ const ProductCard = ({ product }) => {
             return;
         }
         try {
+            if (!isAuthenticated) return;
+            setIsAdding(true);
             await addToCart(product._id);
+            setIsAdded(true);
+            setTimeout(() => setIsAdded(false), 2000);
             toast.success(`${product.name} added to cart!`);
         } catch (error) {
             toast.error(error.response?.data?.error || 'Failed to add to cart');
+        } finally {
+            setIsAdding(false);
         }
     };
 
@@ -50,7 +61,27 @@ const ProductCard = ({ product }) => {
                 <PremiumImage
                     src={product.imageURL}
                     alt={product.name}
+                    onImageError={() => setImageError(true)}
                 />
+
+                {/* Wishlist Heart */}
+                {isAuthenticated && (
+                    <button
+                        className="wishlist-heart-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            wishlistAPI.add(product._id)
+                                .then(() => toast.success('Added to wishlist!'))
+                                .catch((err) => {
+                                    if (err.response?.status === 400) toast('Already in wishlist', { icon: '💝' });
+                                    else toast.error('Failed to add');
+                                });
+                        }}
+                        title="Add to Wishlist"
+                    >
+                        <FiHeart size={16} />
+                    </button>
+                )}
 
                 {/* Badges */}
                 <div className="product-card-badges">
@@ -80,6 +111,22 @@ const ProductCard = ({ product }) => {
                         </span>
                     </div>
                 )}
+                {/* Premium Overlay Actions */}
+                <div className="product-card-overlay">
+                    <button 
+                        className={`quick-add-btn ${isAdded ? 'added' : ''}`}
+                        onClick={handleAddToCart}
+                        disabled={isOutOfStock || isAdding}
+                    >
+                        {isAdded ? (
+                            <><FiCheck size={18} /> Added</>
+                        ) : isAdding ? (
+                            <><span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} /> Adding...</>
+                        ) : (
+                            <><FiShoppingCart size={18} /> {isOutOfStock ? 'Out of Stock' : 'Quick Add'}</>
+                        )}
+                    </button>
+                </div>
             </div>
 
             <div className="product-card-body">
@@ -98,21 +145,15 @@ const ProductCard = ({ product }) => {
 
                 <div className="product-card-footer">
                     <div className="product-price">
-                        <span style={{ color: '#0f1111', fontWeight: 700 }}>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
                             {formatINR(product.price)}
                         </span>
                         {hasDiscount && (
                             <span className="original-price">{formatINR(product.basePrice)}</span>
                         )}
                     </div>
-                    <button
-                        className="add-to-cart-btn"
-                        onClick={handleAddToCart}
-                        disabled={isOutOfStock}
-                        title={isOutOfStock ? 'Out of stock' : 'Add to cart'}
-                    >
-                        <FiShoppingCart size={17} />
-                    </button>
+                    {/* Hide the small cart button since we now have the big Quick Add overlay button */}
+                    <div style={{ padding: '8px' }}></div>
                 </div>
             </div>
         </div>

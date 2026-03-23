@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { productsAPI, reviewsAPI } from '../utils/api';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { productsAPI, reviewsAPI, wishlistAPI } from '../utils/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FiShoppingCart, FiStar, FiPackage, FiShield, FiTruck, FiArrowLeft, FiCheck } from 'react-icons/fi';
+import { FiShoppingCart, FiStar, FiPackage, FiShield, FiTruck, FiArrowLeft, FiCheck, FiHeart, FiImage } from 'react-icons/fi';
 import { formatINR } from '../utils/currency';
 import PremiumImage from '../components/PremiumImage';
+import ProductCard from '../components/ProductCard';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
@@ -17,13 +18,40 @@ const ProductDetailPage = () => {
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
-    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '', images: [''] });
     const [showReviewForm, setShowReviewForm] = useState(false);
+    const [relatedProducts, setRelatedProducts] = useState([]);
+    const [recentlyViewed, setRecentlyViewed] = useState([]);
 
     useEffect(() => {
         fetchProduct();
         fetchReviews();
     }, [id]);
+
+    // Save to recently viewed & fetch related products when product loads
+    useEffect(() => {
+        if (product) {
+            // Save to recently viewed (localStorage)
+            const viewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+            const filtered = viewed.filter(v => v._id !== product._id);
+            const updated = [{ _id: product._id, name: product.name, imageURL: product.imageURL, price: product.price, basePrice: product.basePrice, category: product.category }, ...filtered].slice(0, 10);
+            localStorage.setItem('recentlyViewed', JSON.stringify(updated));
+
+            // Fetch related products via dedicated endpoint
+            productsAPI.getRelated(product._id)
+                .then(({ data }) => {
+                    const related = (Array.isArray(data) ? data : []).filter(p => p.imageURL);
+                    setRelatedProducts(related.slice(0, 4));
+                })
+                .catch(console.error);
+
+            // Load recently viewed
+            const recentItems = JSON.parse(localStorage.getItem('recentlyViewed') || '[]')
+                .filter(v => v._id !== product._id)
+                .slice(0, 4);
+            setRecentlyViewed(recentItems);
+        }
+    }, [product]);
 
     const fetchProduct = async () => {
         try {
@@ -60,13 +88,29 @@ const ProductDetailPage = () => {
         }
     };
 
+    const handleAddToWishlist = async () => {
+        if (!isAuthenticated) {
+            toast.error('Please login first');
+            navigate('/login');
+            return;
+        }
+        try {
+            await wishlistAPI.add(product._id);
+            toast.success('Added to wishlist!');
+        } catch (error) {
+            if (error.response?.status === 400) toast('Already in wishlist', { icon: '💝' });
+            else toast.error('Failed to add to wishlist');
+        }
+    };
+
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
         try {
-            await reviewsAPI.create({ productId: id, ...reviewForm });
+            const images = reviewForm.images.filter(url => url.trim() !== '');
+            await reviewsAPI.create({ productId: id, rating: reviewForm.rating, comment: reviewForm.comment, images });
             toast.success('Review submitted!');
             setShowReviewForm(false);
-            setReviewForm({ rating: 5, comment: '' });
+            setReviewForm({ rating: 5, comment: '', images: [''] });
             fetchReviews();
             fetchProduct();
         } catch (error) {
@@ -117,7 +161,7 @@ const ProductDetailPage = () => {
                         <div className="product-meta">
                             <span className="product-card-category">{product.category}</span>
                             {product.brand && (
-                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>by {product.brand}</span>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>by {product.brand}</span>
                             )}
                         </div>
 
@@ -191,7 +235,7 @@ const ProductDetailPage = () => {
                             </div>
                         </div>
 
-                        {/* Quantity & Add to Cart */}
+                        {/* Quantity & Add to Cart + Wishlist */}
                         {product.stockQuantity > 0 && (
                             <div className="product-actions">
                                 <div className="quantity-control">
@@ -201,6 +245,14 @@ const ProductDetailPage = () => {
                                 </div>
                                 <button className="btn btn-primary btn-lg" onClick={handleAddToCart} style={{ flex: 1 }}>
                                     <FiShoppingCart /> Add to Cart — {formatINR(product.price * quantity)}
+                                </button>
+                                <button
+                                    className="btn btn-secondary btn-lg"
+                                    onClick={handleAddToWishlist}
+                                    style={{ padding: '12px 16px' }}
+                                    title="Add to Wishlist"
+                                >
+                                    <FiHeart />
                                 </button>
                             </div>
                         )}
@@ -214,7 +266,7 @@ const ProductDetailPage = () => {
                                         border: '1px solid rgba(99,102,241,0.2)',
                                         borderRadius: '20px',
                                         fontSize: '0.75rem',
-                                        color: 'var(--primary-light)'
+                                        color: 'var(--text-primary)'
                                     }}>
                                         #{tag}
                                     </span>
@@ -266,6 +318,44 @@ const ProductDetailPage = () => {
                                         minLength={5}
                                     />
                                 </div>
+
+                                {/* Review Photo URLs */}
+                                <div className="form-group">
+                                    <label className="form-label"><FiImage size={14} /> Photo URLs (optional, max 3)</label>
+                                    {reviewForm.images.map((url, i) => (
+                                        <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                            <input
+                                                className="form-input"
+                                                type="url"
+                                                placeholder="Paste image URL..."
+                                                value={url}
+                                                onChange={(e) => {
+                                                    const imgs = [...reviewForm.images];
+                                                    imgs[i] = e.target.value;
+                                                    setReviewForm({ ...reviewForm, images: imgs });
+                                                }}
+                                            />
+                                            {reviewForm.images.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    onClick={() => {
+                                                        const imgs = reviewForm.images.filter((_, j) => j !== i);
+                                                        setReviewForm({ ...reviewForm, images: imgs });
+                                                    }}
+                                                >×</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {reviewForm.images.length < 3 && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => setReviewForm({ ...reviewForm, images: [...reviewForm.images, ''] })}
+                                        >+ Add another image</button>
+                                    )}
+                                </div>
+
                                 <button className="btn btn-primary" type="submit">Submit Review</button>
                             </form>
                         </div>
@@ -304,11 +394,76 @@ const ProductDetailPage = () => {
                                     <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: '1.6' }}>
                                         {review.comment}
                                     </p>
+
+                                    {/* Review Photos */}
+                                    {review.images?.length > 0 && (
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                                            {review.images.map((img, i) => (
+                                                <img
+                                                    key={i}
+                                                    src={img}
+                                                    alt={`Review photo ${i + 1}`}
+                                                    style={{
+                                                        width: '80px', height: '80px', objectFit: 'cover',
+                                                        borderRadius: '8px', border: '1px solid var(--border)',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onClick={() => window.open(img, '_blank')}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
+
+                {/* Related Products */}
+                {relatedProducts.length > 0 && (
+                    <div style={{ marginTop: '60px' }}>
+                        <h2 className="page-title" style={{ marginBottom: '24px' }}>Related Products</h2>
+                        <div className="products-grid">
+                            {relatedProducts.map(p => (
+                                <ProductCard key={p._id} product={p} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Recently Viewed */}
+                {recentlyViewed.length > 0 && (
+                    <div style={{ marginTop: '60px', marginBottom: '40px' }}>
+                        <h2 className="page-title" style={{ marginBottom: '24px' }}>Recently Viewed</h2>
+                        <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
+                            {recentlyViewed.map(item => (
+                                <Link
+                                    key={item._id}
+                                    to={`/products/${item._id}`}
+                                    style={{
+                                        minWidth: '160px', textDecoration: 'none', color: 'inherit',
+                                        background: 'var(--bg-card)', borderRadius: '12px',
+                                        border: '1px solid var(--border)', overflow: 'hidden',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                >
+                                    <div style={{ height: '120px', overflow: 'hidden' }}>
+                                        <PremiumImage src={item.imageURL} alt={item.name} style={{ height: '120px' }} />
+                                    </div>
+                                    <div style={{ padding: '10px' }}>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 600, lineHeight: 1.3, marginBottom: '4px',
+                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {item.name}
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                            {formatINR(item.price)}
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Mobile Sticky Add to Cart */}

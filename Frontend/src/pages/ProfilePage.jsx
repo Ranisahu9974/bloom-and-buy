@@ -32,7 +32,6 @@ const ProfilePage = () => {
         }
     };
 
-    const daysUntilExpiry = user?.membershipExpireDate ? Math.ceil((new Date(user.membershipExpireDate) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
 
     return (
         <div className="main-content">
@@ -46,7 +45,6 @@ const ProfilePage = () => {
                                 <div>
                                     <h2 style={{ fontSize: '1.3rem' }}>{user?.name}</h2>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span className={`tier-badge ${user?.membershipTier?.toLowerCase()}`}><FiAward size={10} /> {user?.membershipTier}</span>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user?.points} points</span>
                                     </div>
                                 </div>
@@ -89,7 +87,7 @@ const ProfilePage = () => {
                             <div className="summary-row"><span>Member Since</span><span>{new Date(user?.createdAt).toLocaleDateString()}</span></div>
                             <div className="summary-row"><span>Total Spent</span><span style={{ fontWeight: '700' }}>{formatINR(user?.totalSpent)}</span></div>
                             <div className="summary-row"><span>Wallet Balance</span><span style={{ color: 'var(--success)', fontWeight: '700' }}>{formatINR(user?.walletBalance)}</span></div>
-                            <div className="summary-row"><span>Membership Expires</span><span>{daysUntilExpiry > 0 ? `${daysUntilExpiry} days` : 'Expired'}</span></div>
+
                         </div>
                     </div>
                 </div>

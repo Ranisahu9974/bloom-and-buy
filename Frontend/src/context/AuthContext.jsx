@@ -47,12 +47,27 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
-    const register = async (name, email, password) => {
-        const { data } = await authAPI.register({ name, email, password });
+    const loginWithGoogle = async ({ idToken, name, email, avatar }) => {
+        const { data } = await authAPI.googleLogin({ idToken, name, email, avatar });
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         setToken(data.token);
         setUser(data.user);
+        if (data.sellerProfile) {
+            setSellerProfile(data.sellerProfile);
+        }
+        return data;
+    };
+
+    const register = async (formData) => {
+        const { data } = await authAPI.register(formData);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        if (data.sellerProfile) {
+            setSellerProfile(data.sellerProfile);
+        }
         return data;
     };
 
@@ -71,11 +86,12 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{
-            user, token, loading, login, register, logout, updateUser, loadUser,
+            user, token, loading,
+            login, loginWithGoogle, register, logout, updateUser, loadUser,
             sellerProfile,
             isAuthenticated: !!token,
             isAdmin: user?.role === 'admin',
-            isSeller: user?.role === 'seller'
+            isSeller: user?.role === 'seller',
         }}>
             {children}
         </AuthContext.Provider>
@@ -87,4 +103,3 @@ export const useAuth = () => {
     if (!context) throw new Error('useAuth must be used within AuthProvider');
     return context;
 };
-

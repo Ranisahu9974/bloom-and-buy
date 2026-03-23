@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { sellerAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FiPackage, FiShoppingBag, FiDollarSign, FiTrendingUp, FiPlus, FiEdit2, FiTrash2, FiEye, FiAlertTriangle, FiX, FiSave } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiDollarSign, FiTrendingUp, FiPlus, FiEdit2, FiTrash2, FiEye, FiAlertTriangle, FiX, FiSave, FiBarChart2, FiBell, FiCheck, FiRefreshCw } from 'react-icons/fi';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { formatINR } from '../utils/currency';
 import PremiumImage from '../components/PremiumImage';
 
@@ -10,8 +11,10 @@ const SellerDashboard = () => {
     const { sellerProfile } = useAuth();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [dashboard, setDashboard] = useState(null);
+    const [analytics, setAnalytics] = useState(null);
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showProductForm, setShowProductForm] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
@@ -24,8 +27,10 @@ const SellerDashboard = () => {
 
     useEffect(() => {
         if (activeTab === 'dashboard') fetchDashboard();
+        else if (activeTab === 'analytics') fetchAnalytics();
         else if (activeTab === 'products') fetchProducts();
         else if (activeTab === 'orders') fetchOrders();
+        else if (activeTab === 'notifications') fetchNotifications();
     }, [activeTab]);
 
     const fetchDashboard = async () => {
@@ -35,6 +40,18 @@ const SellerDashboard = () => {
             setDashboard(data);
         } catch (error) {
             toast.error('Failed to load dashboard');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAnalytics = async () => {
+        try {
+            setLoading(true);
+            const { data } = await sellerAPI.getAnalytics();
+            setAnalytics(data);
+        } catch (error) {
+            toast.error('Failed to load analytics');
         } finally {
             setLoading(false);
         }
@@ -61,6 +78,27 @@ const SellerDashboard = () => {
             toast.error('Failed to load orders');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            setLoading(true);
+            const { data } = await sellerAPI.getNotifications();
+            setNotifications(data);
+        } catch (error) {
+            toast.error('Failed to load notifications');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const markAsRead = async (id) => {
+        try {
+            await sellerAPI.markNotificationRead(id);
+            setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n));
+        } catch (error) {
+            console.error('Failed to mark as read');
         }
     };
 
@@ -145,8 +183,29 @@ const SellerDashboard = () => {
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
                     {[
                         { key: 'dashboard', label: 'Overview', icon: <FiTrendingUp /> },
+                        { key: 'analytics', label: 'Analytics', icon: <FiBarChart2 /> },
                         { key: 'products', label: 'My Products', icon: <FiPackage /> },
-                        { key: 'orders', label: 'Orders', icon: <FiShoppingBag /> }
+                        { key: 'orders', label: 'Orders', icon: <FiShoppingBag /> },
+                        { 
+                            key: 'notifications', 
+                            label: 'Notifications', 
+                            icon: (
+                                <div style={{ position: 'relative' }}>
+                                    <FiBell />
+                                    {notifications.some(n => !n.isRead) && (
+                                        <span style={{ 
+                                            position: 'absolute', 
+                                            top: '-4px', 
+                                            right: '-4px', 
+                                            width: '8px', 
+                                            height: '8px', 
+                                            background: 'var(--error)', 
+                                            borderRadius: '50%' 
+                                        }} />
+                                    )}
+                                </div>
+                            ) 
+                        }
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -237,6 +296,74 @@ const SellerDashboard = () => {
                     </>
                 )}
 
+                {/* ===== Analytics Tab ===== */}
+                {activeTab === 'analytics' && analytics && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '24px' }}>
+                        <div className="glass-card" style={{ padding: '24px' }}>
+                            <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FiTrendingUp color="var(--action)" /> Last 30 Days Sales Trend
+                            </h3>
+                            {analytics.salesTimeline?.length > 0 ? (
+                                <div style={{ height: '300px', width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={analytics.salesTimeline} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                                            <Line type="monotone" dataKey="revenue" stroke="var(--action)" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} />
+                                            <CartesianGrid stroke="#ccc" strokeDasharray="3 3" vertical={false} />
+                                            <XAxis dataKey="_id" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(date) => {
+                                                const d = new Date(date);
+                                                return `${d.getDate()}/${d.getMonth() + 1}`;
+                                            }} />
+                                            <YAxis tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(val) => `₹${val / 1000}k`} />
+                                            <Tooltip
+                                                formatter={(value) => [formatINR(value), 'Revenue']}
+                                                labelFormatter={(label) => new Date(label).toDateString()}
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)' }}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="empty-state" style={{ padding: '40px' }}>
+                                    <p style={{ color: 'var(--text-muted)' }}>No sales data for the last 30 days yet.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="glass-card" style={{ padding: '24px' }}>
+                            <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FiBarChart2 color="var(--accent)" /> Top Performing Products
+                            </h3>
+                            {analytics.topProducts?.length > 0 ? (
+                                <div style={{ height: '300px', width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={analytics.topProducts} margin={{ top: 5, right: 20, bottom: 25, left: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                            <XAxis
+                                                dataKey="name"
+                                                tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                                                tickFormatter={(name) => name.length > 15 ? name.substring(0, 15) + '...' : name}
+                                                interval={0}
+                                                angle={-25}
+                                                textAnchor="end"
+                                            />
+                                            <YAxis tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(val) => `₹${val / 1000}k`} />
+                                            <Tooltip
+                                                formatter={(value) => [formatINR(value), 'Revenue']}
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)' }}
+                                            />
+                                            <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="empty-state" style={{ padding: '40px' }}>
+                                    <p style={{ color: 'var(--text-muted)' }}>No product performance data available yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Products Tab */}
                 {activeTab === 'products' && (
                     <>
@@ -262,7 +389,7 @@ const SellerDashboard = () => {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Category *</label>
-                                            <select className="form-input" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}>
+                                            <select className="form-select" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}>
                                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
@@ -282,10 +409,17 @@ const SellerDashboard = () => {
                                             <label className="form-label">Brand</label>
                                             <input className="form-input" value={productForm.brand} onChange={e => setProductForm({ ...productForm, brand: e.target.value })} />
                                         </div>
-                                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                            <label className="form-label">Image URL</label>
-                                            <input className="form-input" value={productForm.imageURL} onChange={e => setProductForm({ ...productForm, imageURL: e.target.value })} placeholder="https://..." />
-                                        </div>
+                                         <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                             <label className="form-label">Image URL</label>
+                                             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                                 <input className="form-input" value={productForm.imageURL} onChange={e => setProductForm({ ...productForm, imageURL: e.target.value })} placeholder="https://..." style={{ flex: 1 }} />
+                                                 {productForm.imageURL && (
+                                                     <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                                         <img src={productForm.imageURL} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                     </div>
+                                                 )}
+                                             </div>
+                                         </div>
                                         <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                             <label className="form-label">Description *</label>
                                             <textarea className="form-input" rows="3" value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} required />
@@ -383,6 +517,71 @@ const SellerDashboard = () => {
                                                 <span style={{ fontWeight: '600' }}>{formatINR(item.priceAtPurchase * item.quantity)}</span>
                                             </div>
                                         ))}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* Notifications Tab */}
+                {activeTab === 'notifications' && (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 className="page-title" style={{ fontSize: '1.2rem' }}>Notifications</h2>
+                            <button className="btn btn-ghost" onClick={fetchNotifications}><FiRefreshCw /> Refresh</button>
+                        </div>
+                        {notifications.length === 0 ? (
+                            <div className="glass-card" style={{ padding: '60px', textAlign: 'center' }}>
+                                <FiBell size={48} color="var(--text-muted)" />
+                                <p style={{ color: 'var(--text-muted)', marginTop: '16px' }}>No notifications yet</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '12px' }}>
+                                {notifications.map(notification => (
+                                    <div 
+                                        key={notification._id} 
+                                        className={`glass-card ${!notification.isRead ? 'unread-notification' : ''}`} 
+                                        style={{ 
+                                            padding: '16px', 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center',
+                                            borderLeft: !notification.isRead ? '4px solid var(--primary)' : '1px solid rgba(255,255,255,0.05)',
+                                            background: !notification.isRead ? 'rgba(99, 102, 241, 0.05)' : 'rgba(255,255,255,0.02)'
+                                        }}
+                                    >
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: !notification.isRead ? '700' : '600' }}>{notification.title}</h4>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                    {new Date(notification.createdAt).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <p style={{ margin: '4px 0 8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{notification.message}</p>
+                                            {notification.data && (
+                                                <div style={{ 
+                                                    background: 'rgba(0,0,0,0.2)', 
+                                                    padding: '8px 12px', 
+                                                    borderRadius: '6px', 
+                                                    fontSize: '0.8rem',
+                                                    display: 'inline-block'
+                                                }}>
+                                                    <strong>Buyer:</strong> {notification.data.buyerName} | 
+                                                    <strong style={{ marginLeft: '12px' }}>Total:</strong> {formatINR(notification.data.totalAmount)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {!notification.isRead && (
+                                            <button 
+                                                className="btn btn-ghost" 
+                                                onClick={() => markAsRead(notification._id)}
+                                                style={{ color: 'var(--primary)', padding: '8px' }}
+                                                title="Mark as read"
+                                            >
+                                                <FiCheck />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>

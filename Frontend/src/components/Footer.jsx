@@ -36,7 +36,7 @@ const Footer = () => {
                     <div>
                         <FooterLogo />
                         <p className="footer-desc" style={{ marginTop: '14px' }}>
-                            Your trusted online shopping destination. Discover great deals, membership rewards, and a seamless shopping experience.
+                            Your trusted online shopping destination. Discover great deals and a seamless shopping experience.
                         </p>
                         {/* Social icons */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '18px' }}>
@@ -75,7 +75,6 @@ const Footer = () => {
                         <div className="footer-links">
                             <Link to="/profile">My Profile</Link>
                             <Link to="/orders">Order History</Link>
-                            <Link to="/membership">Membership</Link>
                             <Link to="/cart">Shopping Cart</Link>
                             <Link to="/register">Sign Up Free</Link>
                         </div>

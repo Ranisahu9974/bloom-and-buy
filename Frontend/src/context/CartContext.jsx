@@ -10,6 +10,10 @@ export const CartProvider = ({ children }) => {
     const [subtotal, setSubtotal] = useState(0);
     const [itemCount, setItemCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+    const openDrawer = () => setIsDrawerOpen(true);
+    const closeDrawer = () => setIsDrawerOpen(false);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -38,6 +42,7 @@ export const CartProvider = ({ children }) => {
     const addToCart = async (productId, quantity = 1) => {
         const { data } = await cartAPI.add(productId, quantity);
         await fetchCart();
+        openDrawer(); // Open drawer on adding item
         return data;
     };
 
@@ -60,8 +65,9 @@ export const CartProvider = ({ children }) => {
 
     return (
         <CartContext.Provider value={{
-            cart, subtotal, itemCount, loading,
-            addToCart, updateQuantity, removeFromCart, clearCart, fetchCart
+            cart, subtotal, itemCount, loading, isDrawerOpen,
+            addToCart, updateQuantity, removeFromCart, clearCart, fetchCart,
+            openDrawer, closeDrawer
         }}>
             {children}
         </CartContext.Provider>

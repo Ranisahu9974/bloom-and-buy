@@ -1,18 +1,26 @@
 import React from 'react';
 
-const SkeletonCard = () => {
-    return (
-        <div className="skeleton-card">
-            <div className="skeleton skeleton-image"></div>
-            <div className="skeleton-body">
-                <div className="skeleton skeleton-text" style={{ width: '30%', marginBottom: '8px' }}></div>
-                <div className="skeleton skeleton-text"></div>
-                <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
-
-                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px' }}>
-                    <div className="skeleton skeleton-text short"></div>
-                    <div className="skeleton" style={{ width: '38px', height: '38px', borderRadius: '50%' }}></div>
+const SkeletonCard = ({ type = 'card' }) => {
+    if (type === 'list-item') {
+        return (
+            <div className="drawer-item" style={{ pointerEvents: 'none' }}>
+                <div className="drawer-item-img skeleton"></div>
+                <div className="drawer-item-content pt-2">
+                    <div className="skeleton skeleton-text short mb-2"></div>
+                    <div className="skeleton skeleton-text"></div>
+                    <div className="skeleton skeleton-text price mt-2"></div>
                 </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="product-card" style={{ pointerEvents: 'none' }}>
+            <div className="skeleton skeleton-image"></div>
+            <div className="product-card-body">
+                <div className="skeleton skeleton-text short mb-2" style={{ height: '12px', width: '40%' }}></div>
+                <div className="skeleton skeleton-text" style={{ marginBottom: '16px' }}></div>
+                <div className="skeleton skeleton-text price"></div>
             </div>
         </div>
     );

@@ -37,16 +37,20 @@ api.interceptors.response.use(
 export const authAPI = {
     register: (data) => api.post('/register', data),
     login: (data) => api.post('/login', data),
+    googleLogin: (data) => api.post('/auth/google', data),
     getProfile: () => api.get('/users/me'),
     updateProfile: (data) => api.put('/users/me', data),
     getOrderHistory: (page = 1) => api.get(`/users/me/orders?page=${page}`),
+    forgotPassword: (data) => api.post('/auth/forgot-password', data),
 };
 
 // Products API
 export const productsAPI = {
     getAll: (params) => api.get('/products', { params }),
     getById: (id) => api.get(`/products/${id}`),
+    getRelated: (id) => api.get(`/products/${id}/related`),
     getCategories: () => api.get('/products/categories'),
+    getStats: () => api.get('/products/stats'),
     create: (data) => api.post('/products', data),
     update: (id, data) => api.put(`/products/${id}`, data),
     delete: (id) => api.delete(`/products/${id}`),
@@ -84,16 +88,18 @@ export const discountsAPI = {
     delete: (id) => api.delete(`/discounts/${id}`),
 };
 
-// Membership API
-export const membershipAPI = {
-    get: () => api.get('/membership'),
-    getDetails: () => api.get('/membership'),
-};
+
 
 // Pay Later API
 export const payLaterAPI = {
     checkEligibility: (amount) => api.post('/paylater/check-eligibility', { amount }),
     getPlans: () => api.get('/paylater/plans'),
+};
+
+// Payment API (Razorpay)
+export const paymentAPI = {
+    createOrder: (amount, receipt) => api.post('/payment/create-order', { amount, receipt }),
+    verify: (data) => api.post('/payment/verify', data),
 };
 
 // Admin API
@@ -111,12 +117,19 @@ export const adminAPI = {
     getSellers: (params) => api.get('/admin/sellers', { params }),
     getSellerDetail: (id) => api.get(`/admin/sellers/${id}`),
     toggleSeller: (id) => api.put(`/admin/sellers/${id}/toggle`),
+    // Moderation
+    getModerationProducts: (params) => api.get('/admin/products/moderation', { params }),
+    moderateProduct: (id, data) => api.put(`/admin/products/${id}/moderate`, data),
+    bulkModerateProducts: (data) => api.post('/admin/products/bulk-moderate', data),
+    getNotifications: () => api.get('/admin/notifications'),
+    markNotificationRead: (id) => api.put(`/admin/notifications/${id}/read`),
     deleteProduct: (id) => api.delete(`/admin/products/${id}`),
 };
 
 // Seller API
 export const sellerAPI = {
     getDashboard: () => api.get('/seller/dashboard'),
+    getAnalytics: () => api.get('/seller/analytics'),
     getProfile: () => api.get('/seller/profile'),
     updateProfile: (data) => api.put('/seller/profile', data),
     getProducts: (params) => api.get('/seller/products', { params }),
@@ -124,6 +137,16 @@ export const sellerAPI = {
     updateProduct: (id, data) => api.put(`/seller/products/${id}`, data),
     deleteProduct: (id) => api.delete(`/seller/products/${id}`),
     getOrders: (params) => api.get('/seller/orders', { params }),
+    getNotifications: () => api.get('/seller/notifications'),
+    markNotificationRead: (id) => api.put(`/seller/notifications/${id}/read`),
+};
+
+
+// Wishlist API
+export const wishlistAPI = {
+    get: () => api.get('/wishlist'),
+    add: (productId) => api.post(`/wishlist/${productId}`),
+    remove: (productId) => api.delete(`/wishlist/${productId}`),
 };
 
 export default api;

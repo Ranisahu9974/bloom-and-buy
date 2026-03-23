@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { FiTrash2, FiShoppingBag, FiTag, FiCheck } from 'react-icons/fi';
 import { formatINR } from '../utils/currency';
 import PremiumImage from '../components/PremiumImage';
+import SkeletonCard from '../components/SkeletonCard';
 
 const CartPage = () => {
     const { cart, subtotal, itemCount, updateQuantity, removeFromCart, loading } = useCart();
@@ -35,7 +36,19 @@ const CartPage = () => {
     if (loading) {
         return (
             <div className="main-content">
-                <div className="loading-spinner"><div className="spinner" /></div>
+                <div className="container cart-page">
+                    <div className="page-header">
+                        <div className="skeleton skeleton-text" style={{ width: '250px', height: '32px' }}></div>
+                    </div>
+                    <div className="cart-layout">
+                        <div className="cart-items">
+                            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} type="list-item" />)}
+                        </div>
+                        <div className="cart-summary">
+                            <div className="skeleton skeleton-image" style={{ height: '300px' }}></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -115,13 +128,13 @@ const CartPage = () => {
                             <div className="summary-row">
                                 <span>Shipping</span>
                                 <span style={{ color: subtotal > 4150 ? 'var(--success)' : '' }}>
-                                    {subtotal > 4150 ? 'FREE' : formatINR(497)}
+                                    {subtotal > 4150 ? 'FREE' : formatINR(50)}
                                 </span>
                             </div>
 
                             <div className="summary-row total">
                                 <span>Total</span>
-                                <span>{formatINR(finalTotal + (subtotal > 4150 ? 0 : 497))}</span>
+                                <span>{formatINR(finalTotal + (subtotal > 4150 ? 0 : 50))}</span>
                             </div>
 
                             {/* Promo Code */}

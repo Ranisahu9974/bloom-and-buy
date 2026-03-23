@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { productsAPI } from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import PremiumImage from '../components/PremiumImage';
+import SkeletonCard from '../components/SkeletonCard';
 import {
     FiArrowRight, FiShoppingBag, FiAward, FiTruck,
     FiPercent, FiChevronLeft, FiChevronRight, FiZap
@@ -29,16 +30,7 @@ const SLIDES = [
         badge: '✨ Just In',
         emoji: '🆕'
     },
-    {
-        title: 'Free Shipping for Members',
-        sub: 'Join Bloom & Buy — earn cashback, unlock deals, and get early sale access.',
-        bg: 'linear-gradient(135deg, #0d1b2a 0%, #003d2e 60%, #00695c 100%)',
-        accent: '#80cbc4',
-        link: '/register',
-        btn: 'Join Free',
-        badge: '🎁 Members Only',
-        emoji: '💎'
-    },
+
     {
         title: 'Home & Kitchen Picks',
         sub: 'Smart lamps, cozy blankets, premium cookware — transform your living space.',
@@ -70,6 +62,8 @@ const WHY_US = [
 const HomePage = () => {
     const [featured, setFeatured] = useState([]);
     const [deals, setDeals] = useState([]);
+    const [stats, setStats] = useState([['...', 'Products'], ['...', 'Customers'], ['...', 'Rating']]);
+    const [recentlyViewed, setRecentlyViewed] = useState([]);
     const [loading, setLoading] = useState(true);
     const [slide, setSlide] = useState(0);
     const navigate = useNavigate();
@@ -79,11 +73,25 @@ const HomePage = () => {
         (async () => {
             try {
                 const [f, d] = await Promise.all([
-                    productsAPI.getAll({ limit: 8, sort: 'popular' }),
-                    productsAPI.getAll({ limit: 4, sort: 'price_asc' })
+                    productsAPI.getAll({ limit: 12, sort: 'popular' }),
+                    productsAPI.getAll({ limit: 8, sort: 'price_asc' })
                 ]);
-                setFeatured(f.data.products || []);
-                setDeals(d.data.products || []);
+                // Filter out products with missing images
+                const filterValid = (arr) => (arr || []).filter(p => p.imageURL && p.imageURL.trim() !== '');
+                setFeatured(filterValid(f.data.products).slice(0, 8));
+                setDeals(filterValid(d.data.products).slice(0, 4));
+
+                productsAPI.getStats().then(s => {
+                    setStats([
+                        [s.data.products, 'Products'],
+                        [s.data.customers, 'Customers'],
+                        [s.data.rating, 'Rating']
+                    ]);
+                }).catch(e => console.error(e));
+
+                // Load recently viewed from localStorage
+                const viewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+                setRecentlyViewed(viewed.slice(0, 4));
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
         })();
@@ -160,7 +168,7 @@ const HomePage = () => {
 
                         {/* Stats */}
                         <div style={{ display: 'flex', gap: '32px', marginTop: '40px', flexWrap: 'wrap' }}>
-                            {[['10K+', 'Products'], ['50K+', 'Customers'], ['4.8★', 'Rating']].map(([v, l]) => (
+                            {stats.map(([v, l]) => (
                                 <div key={l}>
                                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: s.accent }}>{v}</div>
                                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>{l}</div>
@@ -200,14 +208,14 @@ const HomePage = () => {
             </section>
 
             {/* ===== WHY SHOP WITH US ===== */}
-            <section style={{ background: '#fff', padding: '0', borderBottom: '1px solid #f0f0f0' }}>
+            <section style={{ background: 'var(--bg-card)', padding: '0', borderBottom: '1px solid var(--border-light)' }}>
                 <div className="container">
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
                         {WHY_US.map((f, i) => (
                             <div key={i} style={{
                                 display: 'flex', alignItems: 'center', gap: '14px',
                                 padding: '20px 24px',
-                                borderRight: i < 3 ? '1px solid #f0f0f0' : 'none',
+                                borderRight: i < 3 ? '1px solid var(--border-light)' : 'none',
                             }}>
                                 <div style={{
                                     width: 44, height: 44, borderRadius: 10,
@@ -217,8 +225,8 @@ const HomePage = () => {
                                     color: '#ff9900', flexShrink: 0
                                 }}>{f.icon}</div>
                                 <div>
-                                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f1111', marginBottom: 2 }}>{f.t}</div>
-                                    <div style={{ color: '#888', fontSize: '0.75rem', lineHeight: 1.4 }}>{f.d}</div>
+                                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: 2 }}>{f.t}</div>
+                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', lineHeight: 1.4 }}>{f.d}</div>
                                 </div>
                             </div>
                         ))}
@@ -231,10 +239,10 @@ const HomePage = () => {
                 <div className="container">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                         <div>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f1111', marginBottom: '4px', letterSpacing: '-0.4px' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', letterSpacing: '-0.4px' }}>
                                 Shop by Category
                             </h2>
-                            <p style={{ color: '#888', fontSize: '0.85rem' }}>Find exactly what you're looking for</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Find exactly what you're looking for</p>
                         </div>
                         <Link to="/products" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ff9900', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             All Categories <FiArrowRight size={14} />
@@ -250,7 +258,7 @@ const HomePage = () => {
                         {CATEGORIES.map((c, i) => (
                             <Link key={i} to={`/products?category=${encodeURIComponent(c.name)}`}
                                 className="cat-card"
-                                style={{ textDecoration: 'none', color: '#0f1111', background: '#fff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.25s ease', display: 'block' }}>
+                                style={{ textDecoration: 'none', color: 'var(--text-primary)', background: 'var(--bg-card)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-light)', cursor: 'pointer', transition: 'all 0.25s ease', display: 'block' }}>
                                 <div style={{ height: '110px', overflow: 'hidden', position: 'relative' }}>
                                     <PremiumImage
                                         src={c.img}
@@ -272,10 +280,10 @@ const HomePage = () => {
                 <div className="container">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                         <div>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f1111', marginBottom: '4px', letterSpacing: '-0.4px' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', letterSpacing: '-0.4px' }}>
                                 Featured Products
                             </h2>
-                            <p style={{ color: '#888', fontSize: '0.85rem' }}>Handpicked bestsellers you'll love</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Handpicked bestsellers you'll love</p>
                         </div>
                         <Link to="/products" className="btn btn-secondary btn-sm">
                             View All <FiArrowRight size={13} />
@@ -283,7 +291,7 @@ const HomePage = () => {
                     </div>
                     {loading ? (
                         <div className="products-grid">
-                            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton" style={{ height: '320px', borderRadius: '12px' }} />)}
+                            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
                         </div>
                     ) : featured.length > 0 ? (
                         <div className="products-grid">
@@ -325,45 +333,7 @@ const HomePage = () => {
                 </section>
             )}
 
-            {/* ===== MEMBERSHIP CTA ===== */}
-            <section style={{ padding: '0 0 56px' }}>
-                <div className="container">
-                    <div style={{
-                        background: 'linear-gradient(135deg, #131921 0%, #1a2535 50%, #0d47a1 100%)',
-                        borderRadius: '16px', padding: '48px 40px', textAlign: 'center',
-                        position: 'relative', overflow: 'hidden'
-                    }}>
-                        <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px', background: 'rgba(255,153,0,0.08)', borderRadius: '50%' }} />
-                        <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.04)', borderRadius: '50%' }} />
-                        <div style={{ position: 'relative', zIndex: 1 }}>
-                            <div style={{ display: 'inline-block', background: 'rgba(255,153,0,0.15)', border: '1px solid rgba(255,153,0,0.3)', color: '#ff9900', borderRadius: '20px', padding: '5px 14px', fontSize: '0.75rem', fontWeight: 700, marginBottom: '16px', letterSpacing: '0.5px' }}>
-                                💎 MEMBERSHIP PROGRAM
-                            </div>
-                            <h2 style={{ fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 900, color: '#fff', marginBottom: '10px', letterSpacing: '-0.5px' }}>
-                                Join Bloom & Buy Membership
-                            </h2>
-                            <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: '440px', margin: '0 auto 28px', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                                Exclusive discounts, free shipping, early access to sales, and up to 10% cashback on every order.
-                            </p>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '28px' }}>
-                                {[{ l: 'Basic', c: '2%', cl: '#77b5fe', bg: 'rgba(119,181,254,0.1)' },
-                                { l: 'Silver', c: '5%', cl: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-                                { l: 'Gold', c: '10%', cl: '#ff9900', bg: 'rgba(255,153,0,0.1)' }
-                                ].map((t, i) => (
-                                    <div key={i} style={{ padding: '14px 20px', background: t.bg, borderRadius: '10px', border: `1px solid ${t.cl}30`, minWidth: '110px', textAlign: 'center' }}>
-                                        <div style={{ color: t.cl, fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{t.l}</div>
-                                        <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 800 }}>{t.c}</div>
-                                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem' }}>Cashback</div>
-                                    </div>
-                                ))}
-                            </div>
-                            <Link to="/register" className="btn btn-primary" style={{ padding: '13px 32px', fontSize: '0.95rem' }}>
-                                Get Started Free <FiArrowRight size={16} />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
+
         </div>
     );
 };
