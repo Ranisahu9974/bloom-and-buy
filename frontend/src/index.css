@@ -35,6 +35,7 @@
   --bg-card: #FFFFFF;
   --bg-card-hover: #F8FAFC;
   --bg-input: #F8FAFC;
+  --bg-select: linear-gradient(to bottom, #f7f8fa, #e7e9ec);
   --bg-overlay: rgba(15, 23, 42, 0.7);
 
   /* Text Colors */
@@ -78,6 +79,7 @@
   --bg-card: #1E293B;
   --bg-card-hover: #334155;
   --bg-input: #0B0F19;
+  --bg-select: linear-gradient(to bottom, #1E293B, #0F172A);
   --bg-overlay: rgba(2, 6, 23, 0.85);
 
   /* Vivid Action Tones */
@@ -109,6 +111,11 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] select option {
+  background-color: #1E293B;
+  color: #F8FAFC;
 }
 
 /* ========== RESET & BASE ========== */
@@ -591,18 +598,18 @@ select {
 .form-select {
   width: 100%;
   padding: 8px 10px;
-  background: linear-gradient(to bottom, #f7f8fa, #e7e9ec);
+  background: var(--bg-select);
   border: 1px solid var(--border-dark);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 0.92rem;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23565959'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 16px;
   cursor: pointer;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .form-select:focus {

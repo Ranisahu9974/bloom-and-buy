@@ -121,7 +121,7 @@ const CheckoutPage = () => {
                 currency: data.currency,
                 name: 'Bloom&Buy',
                 description: 'Secure Payment',
-                image: 'https://img.icons8.com/color/96/flower.png',
+                image: '/logo.png',
                 order_id: data.orderId,
                 prefill: {
                     name: user?.name || '',
@@ -228,7 +228,7 @@ const CheckoutPage = () => {
 
                                 <div className="form-group">
                                     <label className="form-label">Country</label>
-                                    <select className="form-input" value={country} onChange={e => { setCountry(e.target.value); setState(''); setCity(''); setArea(''); setZipCode(''); }}>
+                                    <select className="form-select" value={country} onChange={e => { setCountry(e.target.value); setState(''); setCity(''); setArea(''); setZipCode(''); }}>
                                         {COUNTRIES.map(c => <option key={c}>{c}</option>)}
                                     </select>
                                 </div>
@@ -236,14 +236,14 @@ const CheckoutPage = () => {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                     <div className="form-group">
                                         <label className="form-label">State</label>
-                                        <select className="form-input" value={state} onChange={e => { setState(e.target.value); setCity(''); setArea(''); setZipCode(''); }} required>
+                                        <select className="form-select" value={state} onChange={e => { setState(e.target.value); setCity(''); setArea(''); setZipCode(''); }} required>
                                             <option value="">Select State</option>
                                             {states.map(s => <option key={s}>{s}</option>)}
                                         </select>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">City</label>
-                                        <select className="form-input" value={city} onChange={e => { setCity(e.target.value); setArea(''); setZipCode(''); }} required disabled={!state}>
+                                        <select className="form-select" value={city} onChange={e => { setCity(e.target.value); setArea(''); setZipCode(''); }} required disabled={!state}>
                                             <option value="">Select City</option>
                                             {cities.map(c => <option key={c}>{c}</option>)}
                                         </select>

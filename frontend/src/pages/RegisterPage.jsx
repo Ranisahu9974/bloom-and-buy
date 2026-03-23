@@ -65,12 +65,12 @@ const RegisterPage = () => {
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '28px' }}>
                     <div style={{
-                        width: 56, height: 56, borderRadius: '14px',
-                        background: 'linear-gradient(135deg, #ff9900, #e68a00)',
+                        width: 64, height: 64, borderRadius: '16px',
+                        background: 'rgba(255, 255, 255, 0.95)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 16px', fontSize: '1.5rem', boxShadow: '0 4px 16px rgba(255,153,0,0.35)'
+                        margin: '0 auto 16px', padding: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
                     }}>
-                        {form.role === 'seller' ? '🏪' : '✨'}
+                        <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <h2>{form.role === 'seller' ? 'Become a Seller' : 'Create Account'}</h2>
                     <p className="auth-subtitle">

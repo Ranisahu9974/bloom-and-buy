@@ -389,7 +389,7 @@ const SellerDashboard = () => {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Category *</label>
-                                            <select className="form-input" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}>
+                                            <select className="form-select" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}>
                                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>

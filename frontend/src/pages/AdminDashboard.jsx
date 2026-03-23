@@ -597,7 +597,7 @@ const AdminDashboard = () => {
                                                 />
                                             </div>
                                             <select 
-                                                className="form-input" 
+                                                className="form-select" 
                                                 style={{ width: '150px' }}
                                                 value={moderationFilters.status}
                                                 onChange={(e) => setModerationFilters({ ...moderationFilters, status: e.target.value })}
@@ -608,7 +608,7 @@ const AdminDashboard = () => {
                                                 <option value="rejected">Rejected</option>
                                             </select>
                                             <select 
-                                                className="form-input" 
+                                                className="form-select" 
                                                 style={{ width: '150px' }}
                                                 value={moderationFilters.category}
                                                 onChange={(e) => setModerationFilters({ ...moderationFilters, category: e.target.value })}
