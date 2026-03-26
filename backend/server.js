@@ -19,6 +19,7 @@ const adminRoutes = require('./routes/admin');
 const sellerRoutes = require('./routes/seller');
 const wishlistRoutes = require('./routes/wishlist');
 const paymentRoutes = require('./routes/payment');
+const emailRoutes = require('./routes/emails');
 
 // Import cron jobs
 const { initCronJobs } = require('./utils/cronJobs');
@@ -27,7 +28,11 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: [
+        process.env.FRONTEND_URL, 
+        'http://localhost:5173', 
+        'http://localhost:3000'
+    ].filter(Boolean),
     credentials: true
 }));
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -58,6 +63,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/seller', sellerRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/emails', emailRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
