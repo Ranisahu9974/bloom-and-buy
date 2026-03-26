@@ -89,19 +89,8 @@ if (mongoUri && !mongoUri.includes('replace') && mongoUri !== '') {
             .then(() => console.log('✅ Connected to MongoDB Atlas'))
             .catch(err => console.error('❌ MongoDB connection error:', err));
     }
-} else if (!process.env.VERCEL) {
-    // Only run memory server locally if no DB URI is supplied
-    const { MongoMemoryServer } = require('mongodb-memory-server');
-    MongoMemoryServer.create().then(mongoServer => {
-        mongoUri = mongoServer.getUri();
-        process.env.MONGODB_URI = mongoUri;
-        mongoose.connect(mongoUri).then(async () => {
-            console.log('✅ Connected to MongoDB Memory Server');
-            console.log('🌱 Seeding memory database...');
-            const { seed } = require('./utils/seed_v2');
-            await seed(true);
-        });
-    });
+} else {
+    console.error('❌ CRITICAL ERROR: No MONGODB_URI environment variable provided.');
 }
 
 // Start the server locally (Vercel uses module.exports)
@@ -117,6 +106,4 @@ if (!process.env.VERCEL) {
 }
 
 // Export the Express API for Vercel Serverless Functions
-module.exports = app;
-
 module.exports = app;
