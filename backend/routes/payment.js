@@ -6,10 +6,19 @@ const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+try {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (keyId && keySecret && !keyId.includes('REPLACE_ME')) {
+        razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
+        console.log('✅ Razorpay initialized successfully');
+    } else {
+        console.log('⚠️ Razorpay is in Mock Mode - Missing credentials');
+    }
+} catch (err) {
+    console.error('❌ Razorpay initialization error:', err.message);
+}
 
 // POST /api/payment/create-order
 router.post('/create-order', auth, async (req, res) => {
@@ -28,8 +37,8 @@ router.post('/create-order', auth, async (req, res) => {
             },
         };
 
-        if (process.env.RAZORPAY_KEY_ID === 'rzp_test_REPLACE_ME') {
-            console.log('⚠️ Using Razorpay Mock Mode (no valid key provided)');
+        if (process.env.RAZORPAY_KEY_ID === 'rzp_test_REPLACE_ME' || !razorpay) {
+            console.log('⚠️ Using Razorpay Mock Mode (no valid key provided or initialization failed)');
             return res.json({
                 orderId: `mock_order_${Date.now()}`,
                 amount: Math.round(amount * 100),
