@@ -16,17 +16,24 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 # This will run once when the Vercel function starts
 try:
-    print("Running auto-migration and seeding on Vercel...")
+    print("Initializing database...")
+    from django.core.management import call_command
     call_command('migrate', interactive=False)
     
-    # Optional: Run seeding if database is completely empty
     from store.models import Product
     if Product.objects.count() == 0:
-        print("Seeding initial products...")
-        import subprocess
-        subprocess.run(["python", "seed_final_v7.py"], check=True)
+        print("Database is empty. Seeding initial products...")
+        # Try to run the seed script via management command or direct import
+        try:
+            from seed_final_v7 import seed_data_v7
+            seed_data_v7()
+        except ImportError:
+            # Fallback if import fails
+            import subprocess
+            subprocess.run(["python3", "seed_final_v7.py"], check=True)
 except Exception as e:
-    print(f"Database setup error: {e}")
+    # Use a safe way to log error that doesn't crash the app start
+    print(f"CRITICAL: Database setup error: {e}")
 
 application = get_wsgi_application()
 app = application
