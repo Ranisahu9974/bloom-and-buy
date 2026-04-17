@@ -38,9 +38,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-y6gam3zvpm-xv2$9$rd3_a5t53c%o5!e&2q6hdcme0z4ut5tu1')
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-# Railway/Production Host Settings
+# Production Host Settings
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
-ALLOWED_HOSTS.append('.vercel.app') # Allow all Vercel subdomains
+ALLOWED_HOSTS.append('.vercel.app')
 if os.environ.get('RAILWAY_PUBLIC_DOMAIN'):
     ALLOWED_HOSTS.append(os.environ.get('RAILWAY_PUBLIC_DOMAIN'))
 
@@ -120,7 +120,7 @@ DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', 600)),
-        ssl_require=os.environ.get('DB_SSL_REQUIRE', 'False') == 'True'
+        ssl_require=os.environ.get('DB_SSL_REQUIRE', 'True') == 'True'
     )
 }
 

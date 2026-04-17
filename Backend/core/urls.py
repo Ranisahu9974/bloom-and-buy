@@ -6,29 +6,47 @@ import traceback
 import sys
 
 def init_db(request):
-    """Safe endpoint to run migrations and seeding manually from the browser."""
+    """
+    Safe endpoint to run migrations and seeding manually from the browser.
+    Ensures the production database is initialized with data.
+    """
     try:
-        # Check database connection and run migrations
+        # Step 1: Run Migrations
         call_command('migrate', interactive=False)
         
-        # Check if products exist, seed if not
         from store.models import Product
         if Product.objects.count() == 0:
-            try:
-                from seed_final_v7 import seed_data_v7
-                seed_data_v7()
-                return JsonResponse({"status": "success", "message": "Database migrated and seeded successfully!"})
-            except Exception as e:
-                # Fallback to subprocess
-                import subprocess
-                python_exec = sys.executable or "python3"
-                subprocess.run([python_exec, "seed_final_v7.py"], check=True)
-                return JsonResponse({"status": "success", "message": "Database migrated and seeded (via subprocess)!"})
+            # Step 2: Attempt Seeding (Multiple fallbacks)
+            seed_scripts = [
+                ('seed_final_v7', 'seed_data_v7'),
+                ('seed_large', 'seed_large_data'),
+                ('seed_grocery', 'seed_grocery_data')
+            ]
+            
+            error_log = []
+            for module_name, func_name in seed_scripts:
+                try:
+                    module = __import__(module_name)
+                    func = getattr(module, func_name)
+                    func()
+                    return JsonResponse({
+                        "status": "success", 
+                        "message": f"Migrated and seeded successfully using {module_name}!"
+                    })
+                except Exception as e:
+                    error_log.append(f"{module_name} failed: {str(e)}")
+            
+            return JsonResponse({
+                "status": "partial_success",
+                "message": "Migrations completed, but seeding failed.",
+                "errors": error_log
+            }, status=500)
+            
         return JsonResponse({"status": "success", "message": "Database already up to date (products exist)!"})
     except Exception as e:
         return JsonResponse({
             "status": "error", 
-            "message": str(e), 
+            "message": f"General Error: {str(e)}", 
             "traceback": traceback.format_exc()
         }, status=500)
 
