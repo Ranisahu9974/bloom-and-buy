@@ -20,8 +20,16 @@ const LoginPage = () => {
         setLoading(true);
         try {
             const data = await login(email, password);
-            toast.success(`Welcome to my website, ${data.user.name}! 👋`);
-            navigate('/');
+            toast.success(`Welcome back, ${data.user.name}! 👋`);
+            
+            // Redirect based on role
+            if (data.user.role === 'seller') {
+                navigate('/seller');
+            } else if (data.user.role === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/');
+            }
         } catch (error) {
             toast.error(error.response?.data?.error || 'Login failed. Please try again.');
         } finally {
@@ -47,7 +55,14 @@ const LoginPage = () => {
                     avatar: userInfo.picture,
                 });
                 toast.success(`Welcome, ${data.user.name}! 🎉`);
-                navigate('/');
+                
+                if (data.user.role === 'seller') {
+                    navigate('/seller');
+                } else if (data.user.role === 'admin') {
+                    navigate('/admin');
+                } else {
+                    navigate('/');
+                }
             } catch (err) {
                 console.error("Error inside Google callback:", err);
                 toast.error(err.response?.data?.error || err.message || 'Error processing Google login');
@@ -77,12 +92,12 @@ const LoginPage = () => {
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{
-                        width: 64, height: 64, borderRadius: '16px',
-                        background: 'rgba(255, 255, 255, 0.95)',
+                        width: 56, height: 56, borderRadius: '14px',
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 16px', padding: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                        margin: '0 auto 16px', fontSize: '1.5rem', boxShadow: '0 4px 16px rgba(99,102,241,0.4)'
                     }}>
-                        <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        🌸
                     </div>
                     <h2>Welcome Back</h2>
                     <p className="auth-subtitle">Sign in to your Bloom &amp; Buy account</p>

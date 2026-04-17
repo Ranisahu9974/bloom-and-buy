@@ -254,6 +254,17 @@ const ProductDetailPage = () => {
                                 >
                                     <FiHeart />
                                 </button>
+                                
+                                {(isAuthenticated && (product.supplier === isAuthenticated._id || localStorage.getItem('user_role') === 'admin')) && (
+                                    <Link 
+                                        to={localStorage.getItem('user_role') === 'admin' ? '/admin' : '/seller'} 
+                                        className="btn btn-ghost"
+                                        style={{ padding: '12px', border: '1px solid var(--border)' }}
+                                        title="Edit Product"
+                                    >
+                                        Edit Product
+                                    </Link>
+                                )}
                             </div>
                         )}
 

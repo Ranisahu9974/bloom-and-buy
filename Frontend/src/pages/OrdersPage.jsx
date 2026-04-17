@@ -18,7 +18,8 @@ const OrdersPage = () => {
     const fetchOrders = async () => {
         try {
             const { data } = await ordersAPI.getAll(page);
-            setOrders(data.orders || []);
+            const ordersList = Array.isArray(data) ? data : (data.orders || data.results || []);
+            setOrders(ordersList);
             if (data.pagination) {
                 setTotalPages(data.pagination.pages || 1);
             }
@@ -59,13 +60,13 @@ const OrdersPage = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
                                     <div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                                            Order #{order._id?.slice(-8).toUpperCase()}
+                                            Order #{String(order.id || order._id || '').slice(-8).toUpperCase()}
                                         </div>
                                         <div style={{ fontWeight: '700', fontSize: '1.2rem', marginBottom: '4px' }}>
-                                            {formatINR(order.totalAmount)}
+                                            {formatINR(order.total_price || order.totalAmount)}
                                         </div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            {new Date(order.createdAt).toLocaleDateString('en-US', {
+                                            {new Date(order.created_at || order.createdAt).toLocaleDateString('en-US', {
                                                 year: 'numeric', month: 'long', day: 'numeric'
                                             })}
                                         </div>
@@ -86,7 +87,7 @@ const OrdersPage = () => {
                                             overflow: 'hidden', border: '1px solid var(--border)'
                                         }}>
                                             <img src={item.imageURL || 'https://placehold.co/48x48/1e1e35/6366f1?text=·'}
-                                                alt={item.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                alt={item.product_name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                 onError={(e) => { e.target.src = 'https://placehold.co/48x48/1e1e35/6366f1?text=·'; }}
                                             />
                                         </div>
@@ -101,9 +102,8 @@ const OrdersPage = () => {
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                                    <Link to={`/orders/${order._id}/track`} className="btn btn-secondary btn-sm">
+                                    <Link to={`/orders/tracking/${order.id || order._id}`} className="btn btn-secondary btn-sm">
                                         <FiTruck size={14} /> Track Order
                                     </Link>
                                 </div>

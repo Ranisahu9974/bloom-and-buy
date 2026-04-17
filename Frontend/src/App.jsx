@@ -5,6 +5,7 @@ import { CartProvider } from './context/CartContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
+import Chatbot from './components/Chatbot';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -19,8 +20,19 @@ import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import SellerDashboard from './pages/SellerDashboard';
 import WishlistPage from './pages/WishlistPage';
+import { HelpCenterPage, ShippingInfoPage, ReturnsRefundsPage, ContactUsPage } from './pages/SupportPages';
 import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+
+const ScrollToTop = () => {
+    const { pathname } = useLocation();
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+    return null;
+};
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, user, loading } = useAuth();
@@ -62,15 +74,20 @@ const AppContent = () => {
                         <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
                         <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
                         <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
-                        <Route path="/orders/:id/track" element={<ProtectedRoute><OrderTrackingPage /></ProtectedRoute>} />
+                        <Route path="/orders/tracking/:id" element={<ProtectedRoute><OrderTrackingPage /></ProtectedRoute>} />
                         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                         <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
                         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                         <Route path="/seller" element={<SellerRoute><SellerDashboard /></SellerRoute>} />
+                        <Route path="/help-center" element={<HelpCenterPage />} />
+                        <Route path="/shipping-info" element={<ShippingInfoPage />} />
+                        <Route path="/returns-refunds" element={<ReturnsRefundsPage />} />
+                        <Route path="/contact-us" element={<ContactUsPage />} />
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </main>
                 <CartDrawer />
+                <Chatbot />
                 <Footer />
             </div>
         </CartProvider>
@@ -81,6 +98,7 @@ function App() {
     return (
         <Router>
             <AuthProvider>
+                <ScrollToTop />
                 <AppContent />
                 <Toaster
                     position="top-right"
@@ -105,4 +123,3 @@ function App() {
 }
 
 export default App;
-

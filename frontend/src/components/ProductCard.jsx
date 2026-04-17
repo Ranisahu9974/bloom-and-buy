@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiShoppingCart, FiStar, FiHeart, FiCheck } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +26,7 @@ const ProductCard = ({ product }) => {
         try {
             if (!isAuthenticated) return;
             setIsAdding(true);
-            await addToCart(product._id);
+            await addToCart(product.id || product._id);
             setIsAdded(true);
             setTimeout(() => setIsAdded(false), 2000);
             toast.success(`${product.name} added to cart!`);
@@ -49,14 +49,15 @@ const ProductCard = ({ product }) => {
 
     const hasDiscount = product.basePrice > product.price;
     const discountPercent = hasDiscount ? Math.round((1 - product.price / product.basePrice) * 100) : 0;
-    const isOutOfStock = product.stockQuantity === 0;
+    const isOutOfStock = (product.stockQuantity || product.stock) === 0;
 
     return (
-        <div
+        <Link
+            to={`/products/${product.id || product._id}`}
             className="product-card"
-            onClick={() => navigate(`/products/${product._id}`)}
-            style={{ position: 'relative' }}
+            style={{ position: 'relative', display: 'block', textDecoration: 'none', color: 'inherit' }}
         >
+            {/* Inner card content stays same but we need to stop propagation on buttons */}
             <div className="product-card-image">
                 <PremiumImage
                     src={product.imageURL}
@@ -156,7 +157,7 @@ const ProductCard = ({ product }) => {
                     <div style={{ padding: '8px' }}></div>
                 </div>
             </div>
-        </div>
+        </Link>
     );
 };
 

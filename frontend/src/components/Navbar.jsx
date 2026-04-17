@@ -26,6 +26,7 @@ const Navbar = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
@@ -51,14 +52,21 @@ const Navbar = () => {
     // Debounced search logic
     useEffect(() => {
         const fetchSuggestions = async () => {
-            if (searchQuery.trim().length < 2) {
-                setSuggestions([]);
-                setShowSuggestions(false);
+            if (searchQuery.trim().length === 0) {
+                try {
+                    const { data } = await productsAPI.getRecommendations();
+                    setSuggestions(Array.isArray(data) ? data.slice(0,5) : (data.products || []).slice(0,5));
+                    // Only auto-show recommendations if the user is focused or clears search while focused
+                    if (isFocused) setShowSuggestions(true);
+                } catch (error) {
+                    console.error('Failed to fetch recommendations:', error);
+                }
                 return;
             }
             try {
                 const { data } = await productsAPI.getAll({ search: searchQuery, limit: 5 });
-                setSuggestions(data.products || []);
+                setSuggestions(Array.isArray(data) ? data : (data.products || []));
+                // Show suggestions because the user is actively typing
                 setShowSuggestions(true);
             } catch (error) {
                 console.error('Failed to fetch suggestions:', error);
@@ -70,7 +78,7 @@ const Navbar = () => {
         }, 300);
 
         return () => clearTimeout(timerId);
-    }, [searchQuery]);
+    }, [searchQuery, isFocused]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -111,9 +119,11 @@ const Navbar = () => {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => {
+                                    setIsFocused(true);
                                     if (suggestions.length > 0) setShowSuggestions(true);
                                 }}
                                 onBlur={() => {
+                                    setIsFocused(false);
                                     setTimeout(() => setShowSuggestions(false), 200);
                                 }}
                             />
@@ -122,7 +132,7 @@ const Navbar = () => {
                         {showSuggestions && suggestions.length > 0 && (
                             <div className="search-dropdown">
                                 {suggestions.map((product) => (
-                                    <Link key={product._id} to={`/products/${product._id}`} className="search-dropdown-item">
+                                    <Link key={product.id || product._id} to={`/products/${product.id || product._id}`} className="search-dropdown-item">
                                         <div className="search-dropdown-img">
                                             {product.imageURL ? (
                                                 <img src={product.imageURL} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />

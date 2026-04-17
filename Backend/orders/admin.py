@@ -8,7 +8,9 @@ class OrderItemInline(admin.TabularInline):
 
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "total_price","status", "is_paid", "created_at")
+    list_display = ("id", "user", "total_price", "status", "payment_status", "is_paid", "created_at")
+    list_filter = ("status", "payment_status", "is_paid", "created_at")
+    search_fields = ("user__username", "id")
     inlines = [OrderItemInline]
 
 
@@ -34,3 +36,4 @@ class PaymentAdmin(admin.ModelAdmin):
 
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Payment, PaymentAdmin)
+

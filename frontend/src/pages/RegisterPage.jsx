@@ -26,7 +26,12 @@ const RegisterPage = () => {
         const errs = {};
         if (!form.name || form.name.length < 2) errs.name = 'Name must be at least 2 characters';
         if (!form.email || !/^\S+@\S+\.\S+$/.test(form.email)) errs.email = 'Valid email is required';
-        if (!form.phone || !/^\+[1-9]\d{9,14}$/.test(form.phone.trim())) errs.phone = 'International format required (e.g. +919876543210)';
+        
+        // Relaxed phone validation: allow standard 10 digits or international format
+        const phoneClean = form.phone.trim().replace(/\s/g, '');
+        if (!phoneClean || (!/^\+[1-9]\d{9,14}$/.test(phoneClean) && !/^\d{10}$/.test(phoneClean))) {
+            errs.phone = 'Enter a valid 10-digit mobile number or international format (+91...)';
+        }
         if (!form.password || form.password.length < 6) errs.password = 'Password must be at least 6 characters';
         if (!/\d/.test(form.password)) errs.password = 'Password must include a number';
         if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
@@ -65,12 +70,12 @@ const RegisterPage = () => {
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '28px' }}>
                     <div style={{
-                        width: 64, height: 64, borderRadius: '16px',
-                        background: 'rgba(255, 255, 255, 0.95)',
+                        width: 56, height: 56, borderRadius: '14px',
+                        background: 'linear-gradient(135deg, #ff9900, #e68a00)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 16px', padding: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                        margin: '0 auto 16px', fontSize: '1.5rem', boxShadow: '0 4px 16px rgba(255,153,0,0.35)'
                     }}>
-                        <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        {form.role === 'seller' ? '🏪' : '✨'}
                     </div>
                     <h2>{form.role === 'seller' ? 'Become a Seller' : 'Create Account'}</h2>
                     <p className="auth-subtitle">

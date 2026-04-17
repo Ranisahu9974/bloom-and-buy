@@ -18,9 +18,11 @@ const SellerDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [showProductForm, setShowProductForm] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [editingId, setEditingId] = useState(null);
+    const [editForm, setEditForm] = useState({ price: '', stockQuantity: '' });
     const [productForm, setProductForm] = useState({
         name: '', description: '', category: 'Electronics', price: '', basePrice: '',
-        stockQuantity: '', imageURL: '', brand: '', tags: ''
+        stockQuantity: '', imageURL: '', brand: '', tags: '', imageFile: null
     });
 
     const categories = ['Electronics', 'Clothing', 'Home & Kitchen', 'Books', 'Sports', 'Beauty', 'Grocery', 'Toys', 'Automotive', 'Other'];
@@ -61,9 +63,10 @@ const SellerDashboard = () => {
         try {
             setLoading(true);
             const { data } = await sellerAPI.getProducts({ limit: 50 });
-            setProducts(data.products);
+            setProducts(Array.isArray(data?.products) ? data.products : []);
         } catch (error) {
             toast.error('Failed to load products');
+            setProducts([]);
         } finally {
             setLoading(false);
         }
@@ -73,9 +76,10 @@ const SellerDashboard = () => {
         try {
             setLoading(true);
             const { data } = await sellerAPI.getOrders({ limit: 30 });
-            setOrders(data.orders);
+            setOrders(Array.isArray(data?.orders) ? data.orders : []);
         } catch (error) {
             toast.error('Failed to load orders');
+            setOrders([]);
         } finally {
             setLoading(false);
         }
@@ -85,9 +89,10 @@ const SellerDashboard = () => {
         try {
             setLoading(true);
             const { data } = await sellerAPI.getNotifications();
-            setNotifications(data);
+            setNotifications(Array.isArray(data) ? data : []);
         } catch (error) {
             toast.error('Failed to load notifications');
+            setNotifications([]);
         } finally {
             setLoading(false);
         }
@@ -96,7 +101,9 @@ const SellerDashboard = () => {
     const markAsRead = async (id) => {
         try {
             await sellerAPI.markNotificationRead(id);
-            setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n));
+            if (Array.isArray(notifications)) {
+                setNotifications(notifications.map(n => (n.id || n._id) === id ? { ...n, isRead: true } : n));
+            }
         } catch (error) {
             console.error('Failed to mark as read');
         }
@@ -105,7 +112,7 @@ const SellerDashboard = () => {
     const resetForm = () => {
         setProductForm({
             name: '', description: '', category: 'Electronics', price: '', basePrice: '',
-            stockQuantity: '', imageURL: '', brand: '', tags: ''
+            stockQuantity: '', imageURL: '', brand: '', tags: '', imageFile: null
         });
         setEditingProduct(null);
         setShowProductForm(false);
@@ -130,25 +137,71 @@ const SellerDashboard = () => {
     const handleSubmitProduct = async (e) => {
         e.preventDefault();
         try {
-            const payload = {
-                ...productForm,
-                price: parseFloat(productForm.price),
-                basePrice: parseFloat(productForm.basePrice),
-                stockQuantity: parseInt(productForm.stockQuantity),
-                tags: productForm.tags ? productForm.tags.split(',').map(t => t.trim()).filter(Boolean) : []
-            };
+            const formData = new FormData();
+            formData.append('name', productForm.name);
+            formData.append('description', productForm.description);
+            formData.append('category', productForm.category);
+            formData.append('price', parseFloat(productForm.price));
+            
+            const bPrice = parseFloat(productForm.basePrice);
+            if (!isNaN(bPrice)) formData.append('basePrice', bPrice);
+            
+            const stockQty = parseInt(productForm.stockQuantity);
+            if (!isNaN(stockQty)) formData.append('stockQuantity', stockQty);
+            
+            formData.append('brand', productForm.brand || '');
+            
+            const tags = productForm.tags ? productForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+            tags.forEach(tag => formData.append('tags', tag));
+
+            if (productForm.imageFile) {
+                formData.append('image', productForm.imageFile);
+            }
 
             if (editingProduct) {
-                await sellerAPI.updateProduct(editingProduct._id, payload);
+                await sellerAPI.updateProduct(editingProduct.id || editingProduct._id, formData);
                 toast.success('Product updated!');
             } else {
-                await sellerAPI.addProduct(payload);
-                toast.success('Product added!');
+                await sellerAPI.addProduct(formData);
+                toast.success('Product added! Waiting for admin approval.');
             }
             resetForm();
             fetchProducts();
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Failed to save product');
+            console.error('Failed to add product:', error);
+            let errorMessage = 'Failed to save product.';
+            
+            if (error.response?.data) {
+                const data = error.response.data;
+                if (typeof data === 'object') {
+                    // Extract first error message from DRF structure
+                    const firstKey = Object.keys(data)[0];
+                    const firstError = data[firstKey];
+                    errorMessage = `${firstKey}: ${Array.isArray(firstError) ? firstError[0] : firstError}`;
+                } else {
+                    errorMessage = data.toString();
+                }
+            }
+            toast.error(errorMessage);
+        }
+    };
+
+    const startEditingInventory = (product) => {
+        setEditingId(product.id || product._id);
+        setEditForm({ price: product.price, stockQuantity: product.stockQuantity });
+    };
+
+    const handleUpdateInventory = async (id) => {
+        try {
+            const formData = new FormData();
+            formData.append('price', parseFloat(editForm.price));
+            formData.append('stockQuantity', parseInt(editForm.stockQuantity));
+            await sellerAPI.updateProduct(id, formData);
+            toast.success('Inventory updated');
+            setEditingId(null);
+            fetchProducts();
+        } catch (error) {
+            toast.error('Failed to update inventory');
         }
     };
 
@@ -185,6 +238,7 @@ const SellerDashboard = () => {
                         { key: 'dashboard', label: 'Overview', icon: <FiTrendingUp /> },
                         { key: 'analytics', label: 'Analytics', icon: <FiBarChart2 /> },
                         { key: 'products', label: 'My Products', icon: <FiPackage /> },
+                        { key: 'inventory', label: 'Inventory', icon: <FiRefreshCw /> },
                         { key: 'orders', label: 'Orders', icon: <FiShoppingBag /> },
                         { 
                             key: 'notifications', 
@@ -389,7 +443,7 @@ const SellerDashboard = () => {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Category *</label>
-                                            <select className="form-select" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}>
+                                            <select className="form-input" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}>
                                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
@@ -410,15 +464,30 @@ const SellerDashboard = () => {
                                             <input className="form-input" value={productForm.brand} onChange={e => setProductForm({ ...productForm, brand: e.target.value })} />
                                         </div>
                                          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                             <label className="form-label">Image URL</label>
-                                             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                                                 <input className="form-input" value={productForm.imageURL} onChange={e => setProductForm({ ...productForm, imageURL: e.target.value })} placeholder="https://..." style={{ flex: 1 }} />
-                                                 {productForm.imageURL && (
+                                             <label className="form-label">Product Image</label>
+                                             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                                 <input 
+                                                    type="file" 
+                                                    className="form-input" 
+                                                    accept="image/*"
+                                                    onChange={e => setProductForm({ ...productForm, imageFile: e.target.files[0] })} 
+                                                    style={{ flex: 1 }} 
+                                                 />
+                                                 {(productForm.imageFile || productForm.imageURL) && (
                                                      <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                                                         <img src={productForm.imageURL} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                         <img 
+                                                            src={productForm.imageFile ? URL.createObjectURL(productForm.imageFile) : productForm.imageURL} 
+                                                            alt="Preview" 
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                         />
                                                      </div>
                                                  )}
                                              </div>
+                                             {editingProduct && !productForm.imageFile && (
+                                                 <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                     Keep empty to use existing image
+                                                 </p>
+                                             )}
                                          </div>
                                         <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                             <label className="form-label">Description *</label>
@@ -447,8 +516,10 @@ const SellerDashboard = () => {
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gap: '16px' }}>
-                                {products.map(product => (
-                                    <div key={product._id} className="glass-card" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                {products.map(product => {
+                                    const prodId = product.id || product._id;
+                                    return (
+                                    <div key={prodId} className="glass-card" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center' }}>
                                         <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
                                             <PremiumImage src={product.imageURL} alt={product.name} fallbackIconSize={24} />
                                         </div>
@@ -473,15 +544,107 @@ const SellerDashboard = () => {
                                             <button className="btn btn-ghost" onClick={() => openEditForm(product)} title="Edit">
                                                 <FiEdit2 size={16} />
                                             </button>
-                                            <button className="btn btn-ghost" onClick={() => handleDeleteProduct(product._id)} title="Deactivate" style={{ color: 'var(--error)' }}>
+                                            <button className="btn btn-ghost" onClick={() => handleDeleteProduct(prodId)} title="Deactivate" style={{ color: 'var(--error)' }}>
                                                 <FiTrash2 size={16} />
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </>
+                )}
+
+                {/* Inventory Tab (Quick Management) */}
+                {activeTab === 'inventory' && (
+                    <div className="fade-in">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 className="page-title" style={{ fontSize: '1.2rem' }}>Quick Inventory Management</h2>
+                            <button className="btn btn-ghost" onClick={fetchProducts}><FiRefreshCw /> Refresh</button>
+                        </div>
+                        <div className="table-container">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Stock</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {products.map(product => {
+                                        const prodId = product.id || product._id;
+                                        return (
+                                        <tr key={prodId}>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <img src={product.imageURL} style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' }} />
+                                                    <span style={{ fontWeight: 600 }}>{product.name}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {editingId === prodId ? (
+                                                    <input 
+                                                        type="number" 
+                                                        className="form-input" 
+                                                        value={editForm.price} 
+                                                        onChange={e => setEditForm({...editForm, price: e.target.value})}
+                                                        style={{ width: '100px', padding: '4px' }}
+                                                    />
+                                                ) : (
+                                                    <span style={{ fontWeight: 700 }}>{formatINR(product.price)}</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {editingId === prodId ? (
+                                                    <input 
+                                                        type="number" 
+                                                        className="form-input" 
+                                                        value={editForm.stockQuantity} 
+                                                        onChange={e => setEditForm({...editForm, stockQuantity: e.target.value})}
+                                                        style={{ width: '80px', padding: '4px' }}
+                                                    />
+                                                ) : (
+                                                    <span style={{ 
+                                                        fontWeight: 700, 
+                                                        color: product.stockQuantity <= 5 ? 'var(--error)' : 'inherit' 
+                                                    }}>
+                                                        {product.stockQuantity}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${product.isActive ? 'badge-new' : 'badge-clearance'}`}>
+                                                    {product.isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {editingId === prodId ? (
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-sm btn-success" onClick={() => handleUpdateInventory(prodId)}>Save</button>
+                                                        <button className="btn btn-sm btn-secondary" onClick={() => setEditingId(null)}>Cancel</button>
+                                                    </div>
+                                                ) : (
+                                                    <button className="btn btn-sm btn-primary" onClick={() => startEditingInventory(product)}>Edit</button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                        );
+                                    })}
+                                    {products.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                                No products found. Go to 'My Products' to add one.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 )}
 
                 {/* Orders Tab */}
@@ -495,11 +658,13 @@ const SellerDashboard = () => {
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gap: '16px' }}>
-                                {orders.map(order => (
-                                    <div key={order._id} className="glass-card" style={{ padding: '20px' }}>
+                                {orders.map(order => {
+                                    const orderId = order.id || order._id;
+                                    return (
+                                    <div key={orderId} className="glass-card" style={{ padding: '20px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                             <div>
-                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Order #{order._id?.slice(-8)}</span>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Order #{orderId?.toString().slice(-8)}</span>
                                                 <span style={{ marginLeft: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                     {new Date(order.createdAt).toLocaleDateString()}
                                                 </span>
@@ -518,7 +683,8 @@ const SellerDashboard = () => {
                                             </div>
                                         ))}
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </>

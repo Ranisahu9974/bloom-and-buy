@@ -15,6 +15,11 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Bypass API calls and hot-reload requests
+  if (event.request.url.includes('/api/') || event.request.url.includes('@vite')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -22,7 +27,12 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        // Clone the request because it can only be used once
+        return fetch(event.request).catch(err => {
+          console.warn('[SW] Fetch failed for:', event.request.url, err);
+          // For navigation requests, we can't do much without a fallback page
+          throw err;
+        });
       })
   );
 });

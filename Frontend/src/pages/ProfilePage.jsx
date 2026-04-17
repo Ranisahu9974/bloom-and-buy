@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiSave, FiAward, FiImage } from 'react-icons/fi';
 import { formatINR } from '../utils/currency';
 import UserAvatar from '../components/UserAvatar';
+import AnnouncementBoard from '../components/AnnouncementBoard';
 
 const ProfilePage = () => {
     const { user, updateUser } = useAuth();
@@ -37,6 +38,9 @@ const ProfilePage = () => {
         <div className="main-content">
             <div className="container section">
                 <div className="page-header"><h1 className="page-title">My Profile</h1></div>
+                
+                <AnnouncementBoard />
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
                     <div>
                         <div className="glass-card" style={{ padding: '32px' }}>
@@ -71,16 +75,43 @@ const ProfilePage = () => {
                     <div>
                         <div className="glass-card" style={{ padding: '32px', marginBottom: '16px' }}>
                             <h3 style={{ marginBottom: '16px' }}><FiMapPin size={16} /> Shipping Address</h3>
-                            <div className="form-group"><input className="form-input" placeholder="Street" value={form.address.street} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })} /></div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div className="form-group"><input className="form-input" placeholder="City" value={form.address.city} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })} /></div>
-                                <div className="form-group"><input className="form-input" placeholder="State" value={form.address.state} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })} /></div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Full Name for Shipping</label>
+                                <input className="form-input" placeholder="Recipient's Name" value={form.address.full_name || ''} onChange={e => setForm({ ...form, address: { ...form.address, full_name: e.target.value } })} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Shipping Phone</label>
+                                <input className="form-input" placeholder="Shipping Phone Number" value={form.address.phone_number || ''} onChange={e => setForm({ ...form, address: { ...form.address, phone_number: e.target.value } })} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Street Address</label>
+                                <input className="form-input" placeholder="Street" value={form.address.street} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Locality / Area</label>
+                                <input className="form-input" placeholder="Locality" value={form.address.locality || ''} onChange={e => setForm({ ...form, address: { ...form.address, locality: e.target.value } })} />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div className="form-group"><input className="form-input" placeholder="ZIP" value={form.address.zipCode} onChange={e => setForm({ ...form, address: { ...form.address, zipCode: e.target.value } })} /></div>
-                                <div className="form-group"><input className="form-input" placeholder="Country" value={form.address.country} onChange={e => setForm({ ...form, address: { ...form.address, country: e.target.value } })} /></div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: '0.75rem' }}>City</label>
+                                    <input className="form-input" placeholder="City" value={form.address.city} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: '0.75rem' }}>State</label>
+                                    <input className="form-input" placeholder="State" value={form.address.state} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })} />
+                                </div>
                             </div>
-                            <button className="btn btn-primary" onClick={handleSave} disabled={loading}><FiSave /> Save Address</button>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: '0.75rem' }}>ZIP Code</label>
+                                    <input className="form-input" placeholder="ZIP" value={form.address.zipCode} onChange={e => setForm({ ...form, address: { ...form.address, zipCode: e.target.value } })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Country</label>
+                                    <input className="form-input" placeholder="Country" value={form.address.country} onChange={e => setForm({ ...form, address: { ...form.address, country: e.target.value } })} />
+                                </div>
+                            </div>
+                            <button className="btn btn-primary" onClick={handleSave} disabled={loading} style={{ width: '100%' }}><FiSave /> Save Address</button>
                         </div>
                         <div className="glass-card" style={{ padding: '24px' }}>
                             <h3 style={{ marginBottom: '12px' }}>Account Info</h3>

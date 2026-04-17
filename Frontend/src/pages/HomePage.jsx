@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { productsAPI } from '../utils/api';
+import { productsAPI, authAPI, adminAPI } from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import PremiumImage from '../components/PremiumImage';
 import SkeletonCard from '../components/SkeletonCard';
+import AnnouncementBoard from '../components/AnnouncementBoard';
 import {
     FiArrowRight, FiShoppingBag, FiAward, FiTruck,
-    FiPercent, FiChevronLeft, FiChevronRight, FiZap
+    FiPercent, FiChevronLeft, FiChevronRight, FiZap,
+    FiPlus, FiPlusCircle
 } from 'react-icons/fi';
 
 const SLIDES = [
@@ -15,7 +17,7 @@ const SLIDES = [
         sub: 'Electronics, fashion, home essentials & more. Limited time deals updated daily.',
         bg: 'linear-gradient(135deg, #0d1b2a 0%, #1a3a5c 60%, #0d47a1 100%)',
         accent: '#4fc3f7',
-        link: '/products',
+        link: '/products?sort=popular',
         btn: 'Shop Now',
         badge: '🔥 Hot Deals',
         emoji: '⚡'
@@ -65,9 +67,10 @@ const HomePage = () => {
     const [stats, setStats] = useState([['...', 'Products'], ['...', 'Customers'], ['...', 'Rating']]);
     const [recentlyViewed, setRecentlyViewed] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [banners, setBanners] = useState(SLIDES); // Default to hardcoded
     const [slide, setSlide] = useState(0);
     const navigate = useNavigate();
-    const s = SLIDES[slide];
+    const s = banners[slide] || banners[0] || SLIDES[0];
 
     useEffect(() => {
         (async () => {
@@ -77,17 +80,41 @@ const HomePage = () => {
                     productsAPI.getAll({ limit: 8, sort: 'price_asc' })
                 ]);
                 // Filter out products with missing images
-                const filterValid = (arr) => (arr || []).filter(p => p.imageURL && p.imageURL.trim() !== '');
-                setFeatured(filterValid(f.data.products).slice(0, 8));
-                setDeals(filterValid(d.data.products).slice(0, 4));
+                const filterValid = (arr) => Array.isArray(arr) ? arr.filter(p => p.image && p.image.trim() !== '') : [];
+                setFeatured(filterValid(f.data).slice(0, 8));
+                setDeals(filterValid(d.data).slice(0, 4));
 
                 productsAPI.getStats().then(s => {
-                    setStats([
-                        [s.data.products, 'Products'],
-                        [s.data.customers, 'Customers'],
-                        [s.data.rating, 'Rating']
-                    ]);
-                }).catch(e => console.error(e));
+                    if (s && s.data) {
+                        setStats([
+                            [s.data.totalProducts || '...', 'Products'],
+                            [s.data.totalCategories || '...', 'Categories'],
+                            ['4.5', 'Rating']
+                        ]);
+                    }
+                }).catch(e => console.error('Stats fetch error:', e));
+
+                productsAPI.getBanners().then(b => {
+                    if (b && b.data && Array.isArray(b.data) && b.data.length > 0) {
+                        // Only map if the first item looks like a banner (has a title or background_gradient)
+                        // If it's just a product list, we'll stick to our high-quality SLIDES
+                        const isAtLeastOneBanner = b.data.some(item => item && (item.title || item.background_gradient));
+                        
+                        if (isAtLeastOneBanner) {
+                            const mapped = b.data.map(item => ({
+                                title: item.title || item.name || 'Premium Find',
+                                sub: item.subtitle || item.description?.substring(0, 100) || 'Discover our curated collection.',
+                                bg: item.background_gradient || 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
+                                accent: item.accent_color || '#4f46e5',
+                                link: item.link || `/products/${item.id || item._id || ''}`,
+                                btn: item.button_text || 'See Detail',
+                                badge: item.badge_text || 'Exclusive',
+                                emoji: item.emoji || '✨'
+                            }));
+                            setBanners(mapped);
+                        }
+                    }
+                }).catch(e => console.error('Banners fetch error:', e));
 
                 // Load recently viewed from localStorage
                 const viewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
@@ -98,9 +125,9 @@ const HomePage = () => {
     }, []);
 
     useEffect(() => {
-        const t = setInterval(() => setSlide(p => (p + 1) % SLIDES.length), 6000);
+        const t = setInterval(() => setSlide(p => (p + 1) % (banners.length || 1)), 6000);
         return () => clearInterval(t);
-    }, []);
+    }, [banners.length]);
 
     return (
         <div>
@@ -112,7 +139,12 @@ const HomePage = () => {
                 minHeight: '480px',
                 display: 'flex',
                 alignItems: 'center',
-                transition: 'background 0.8s ease'
+                transition: 'background 0.8s ease',
+                cursor: 'pointer'
+            }} onClick={(e) => {
+                if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A' && !e.target.closest('a') && !e.target.closest('button')) {
+                    navigate(s.link);
+                }
             }}>
                 {/* Decorative circles */}
                 <div style={{ position: 'absolute', top: '-80px', right: '-60px', width: '400px', height: '400px', background: 'rgba(255,255,255,0.03)', borderRadius: '50%' }} />
@@ -207,6 +239,8 @@ const HomePage = () => {
                 </div>
             </section>
 
+            <AnnouncementBoard />
+
             {/* ===== WHY SHOP WITH US ===== */}
             <section style={{ background: 'var(--bg-card)', padding: '0', borderBottom: '1px solid var(--border-light)' }}>
                 <div className="container">
@@ -268,7 +302,7 @@ const HomePage = () => {
                                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)' }} />
                                     <span style={{ position: 'absolute', bottom: '8px', left: '8px', fontSize: '1.4rem' }}>{c.icon}</span>
                                 </div>
-                                <div style={{ padding: '10px 12px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '-0.1px' }}>{c.name}</div>
+                                <div className="cat-name" style={{ padding: '10px 12px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '-0.1px' }}>{c.name}</div>
                             </Link>
                         ))}
                     </div>

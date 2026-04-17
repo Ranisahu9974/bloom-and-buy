@@ -1,16 +1,40 @@
 services:
+  # 1. Backend Web Service (Django)
   - type: web
-    name: bloom-buy-api
-    env: node
-    rootDir: Backend
-    buildCommand: npm install
-    startCommand: npm start
+    name: bloom-buy-backend
+    env: python
+    plan: free
+    buildCommand: "cd Backend && ./build.sh"
+    startCommand: "cd Backend && gunicorn core.wsgi:application"
     envVars:
-      - key: NODE_VERSION
-        value: 20
-      - key: MONGODB_URI
+      - key: DATABASE_URL
+        sync: false # You will paste your Neon.tech URL here
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      # Third-party Integrations
+      - key: EMAIL_HOST_USER
         sync: false
-      - key: JWT_SECRET
+      - key: EMAIL_HOST_PASSWORD
         sync: false
-      - key: FRONTEND_URL
-        sync: false
+
+  # 2. Frontend Static Site (React/Vite)
+  - type: web
+    name: bloom-buy-frontend
+    env: static
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: "frontend/dist"
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: "https://bloom-buy-backend.onrender.com/api" # Update this to your real backend URL

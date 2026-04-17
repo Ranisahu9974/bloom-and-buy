@@ -84,11 +84,11 @@ const CartDrawer = () => {
                             </button>
                         </div>
                     ) : (
-                        cart.items.map((item) => {
+                        cart.items.map((item, index) => {
                             const product = item.product;
                             if (!product) return null;
                             return (
-                                <div key={item._id} className="drawer-item">
+                                <div key={item.id || index} className="drawer-item">
                                     <div className="drawer-item-img">
                                         <PremiumImage 
                                             src={product.imageURL} 
@@ -107,17 +107,17 @@ const CartDrawer = () => {
                                             <div className="drawer-qty-box">
                                                 <button 
                                                     className="drawer-qty-btn"
-                                                    onClick={() => item.quantity > 1 && updateQuantity(product._id, item.quantity - 1)}
+                                                    onClick={() => item.quantity > 1 && updateQuantity(product.id || product._id, item.quantity - 1)}
                                                 >−</button>
                                                 <span className="drawer-qty-val">{item.quantity}</span>
                                                 <button 
                                                     className="drawer-qty-btn"
-                                                    onClick={() => updateQuantity(product._id, item.quantity + 1)}
+                                                    onClick={() => updateQuantity(product.id || product._id, item.quantity + 1)}
                                                 >+</button>
                                             </div>
                                             <button 
                                                 className="drawer-item-remove"
-                                                onClick={() => removeFromCart(product._id)}
+                                                onClick={() => removeFromCart(product.id || product._id)}
                                             >
                                                 <FiTrash2 size={14} /> Remove
                                             </button>
@@ -131,16 +131,35 @@ const CartDrawer = () => {
 
                 {isAuthenticated && cart.items?.length > 0 && (
                     <div className="cart-drawer-footer">
-                        <div className="drawer-summary-row">
-                            <span>Subtotal</span>
-                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatINR(subtotal)}</span>
-                        </div>
-                        <div className="drawer-summary-row">
-                            <span>Shipping</span>
-                            <span style={{ color: subtotal > 4150 ? 'var(--success)' : 'inherit' }}>
-                                {subtotal > 4150 ? 'Free' : formatINR(50)}
-                            </span>
-                        </div>
+                        {(() => {
+                            const baseSubtotal = cart.items.reduce((acc, item) => acc + ((item.product?.basePrice || item.product?.price || 0) * item.quantity), 0);
+                            const discountAmount = baseSubtotal - subtotal;
+                            
+                            return (
+                                <>
+                                    <div className="drawer-summary-row" style={{ color: 'var(--text-muted)' }}>
+                                        <span>Total MRP</span>
+                                        <span style={{ textDecoration: 'line-through' }}>{formatINR(baseSubtotal)}</span>
+                                    </div>
+                                    {discountAmount > 0 && (
+                                        <div className="drawer-summary-row" style={{ color: 'var(--success)' }}>
+                                            <span>Product Discounts</span>
+                                            <span>-{formatINR(discountAmount)}</span>
+                                        </div>
+                                    )}
+                                    <div className="drawer-summary-row">
+                                        <span>Subtotal</span>
+                                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatINR(subtotal)}</span>
+                                    </div>
+                                    <div className="drawer-summary-row">
+                                        <span>Shipping</span>
+                                        <span style={{ color: subtotal > 4150 ? 'var(--success)' : 'inherit' }}>
+                                            {subtotal > 4150 ? 'Free' : formatINR(50)}
+                                        </span>
+                                    </div>
+                                </>
+                            );
+                        })()}
                         <div className="drawer-summary-total">
                             <span>Total</span>
                             <span>{formatINR(subtotal + (subtotal > 4150 ? 0 : 50))}</span>

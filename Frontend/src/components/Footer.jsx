@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { authAPI } from '../utils/api';
 import { FiTwitter, FiInstagram, FiFacebook, FiYoutube, FiMail, FiArrowRight } from 'react-icons/fi';
 
 const FooterLogo = () => (
@@ -13,19 +15,36 @@ const FooterLogo = () => (
 );
 
 const SOCIAL = [
-    { icon: <FiTwitter size={16} />, label: 'Twitter', href: '#' },
-    { icon: <FiInstagram size={16} />, label: 'Instagram', href: '#' },
-    { icon: <FiFacebook size={16} />, label: 'Facebook', href: '#' },
-    { icon: <FiYoutube size={16} />, label: 'YouTube', href: '#' },
+    { icon: <FiTwitter size={16} />, label: 'Twitter', href: 'https://twitter.com' },
+    { icon: <FiInstagram size={16} />, label: 'Instagram', href: 'https://instagram.com' },
+    { icon: <FiFacebook size={16} />, label: 'Facebook', href: 'https://facebook.com' },
+    { icon: <FiYoutube size={16} />, label: 'YouTube', href: 'https://youtube.com' },
 ];
 
 const Footer = () => {
     const [email, setEmail] = useState('');
     const [subscribed, setSubscribed] = useState(false);
 
-    const handleSubscribe = (e) => {
+    const handleSubscribe = async (e) => {
         e.preventDefault();
-        if (email.trim()) { setSubscribed(true); setEmail(''); }
+        if (!email.trim()) {
+            toast.error('Please enter a valid email address.');
+            return;
+        }
+        try {
+            const { data } = await authAPI.subscribe({ email });
+            setSubscribed(true);
+            setEmail('');
+            if (data.warning) {
+                toast.error(data.warning, { duration: 6000 });
+                toast.success(data.message);
+            } else {
+                toast.success(data.message || 'Subscription successful!');
+            }
+        } catch (error) {
+            const message = error?.response?.data?.error || 'Subscription failed. Please try again.';
+            toast.error(message);
+        }
     };
 
     return (
@@ -41,7 +60,7 @@ const Footer = () => {
                         {/* Social icons */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '18px' }}>
                             {SOCIAL.map(s => (
-                                <a key={s.label} href={s.href} aria-label={s.label} style={{
+                                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} style={{
                                     width: 34, height: 34, borderRadius: '8px',
                                     background: 'rgba(255,255,255,0.07)',
                                     border: '1px solid rgba(255,255,255,0.1)',
@@ -112,10 +131,10 @@ const Footer = () => {
                         <div style={{ marginTop: '18px' }}>
                             <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#fff', marginBottom: '8px' }}>Support</div>
                             <div className="footer-links">
-                                <a href="#">Help Center</a>
-                                <a href="#">Shipping Info</a>
-                                <a href="#">Returns &amp; Refunds</a>
-                                <a href="#">Contact Us</a>
+                                <Link to="/help-center">Help Center</Link>
+                                <Link to="/shipping-info">Shipping Info</Link>
+                                <Link to="/returns-refunds">Returns & Refunds</Link>
+                                <Link to="/contact-us">Contact Us</Link>
                             </div>
                         </div>
                     </div>
@@ -124,9 +143,9 @@ const Footer = () => {
                 <div className="footer-bottom">
                     <span>© {new Date().getFullYear()} Bloom and Buy. All rights reserved.</span>
                     <span style={{ margin: '0 8px', opacity: 0.3 }}>·</span>
-                    <a href="#" style={{ color: '#666', fontSize: '0.78rem' }}>Privacy Policy</a>
+                    <Link to="/privacy-policy" style={{ color: '#666', fontSize: '0.78rem' }}>Privacy Policy</Link>
                     <span style={{ margin: '0 8px', opacity: 0.3 }}>·</span>
-                    <a href="#" style={{ color: '#666', fontSize: '0.78rem' }}>Terms of Service</a>
+                    <Link to="/terms" style={{ color: '#666', fontSize: '0.78rem' }}>Terms of Service</Link>
                 </div>
             </div>
         </footer>

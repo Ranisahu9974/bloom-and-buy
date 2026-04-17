@@ -1,48 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { ordersAPI, paymentAPI, payLaterAPI } from '../utils/api';
+import { ordersAPI, paymentAPI } from '../utils/api';
 import toast from 'react-hot-toast';
-import { FiMapPin, FiCreditCard, FiCheck, FiSmartphone, FiPackage } from 'react-icons/fi';
+import { FiCreditCard, FiCheck, FiSmartphone, FiPackage, FiInfo } from 'react-icons/fi';
 import { formatINR } from '../utils/currency';
-
-// ─────────────── Address Data ───────────────
-const ADDRESS_DATA = {
-    India: {
-        states: [
-            'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
-            'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
-            'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab',
-            'Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh',
-            'Uttarakhand','West Bengal','Delhi','Chandigarh','Puducherry',
-        ],
-        cities: {
-            Maharashtra: ['Mumbai','Pune','Nagpur','Nashik','Aurangabad','Thane'],
-            Delhi: ['New Delhi','Dwarka','Rohini','Noida Extension'],
-            Karnataka: ['Bengaluru','Mysuru','Hubli','Mangaluru'],
-            Tamil_Nadu: ['Chennai','Coimbatore','Madurai','Salem'],
-            Gujarat: ['Ahmedabad','Surat','Vadodara','Rajkot'],
-            'Uttar Pradesh': ['Lucknow','Kanpur','Varanasi','Agra','Prayagraj'],
-            'West Bengal': ['Kolkata','Howrah','Durgapur','Asansol'],
-            Rajasthan: ['Jaipur','Jodhpur','Udaipur','Kota'],
-            'Andhra Pradesh': ['Visakhapatnam','Vijayawada','Guntur'],
-            Telangana: ['Hyderabad','Warangal','Karimnagar'],
-        },
-        areas: {
-            Mumbai: [{area:'Andheri',pin:'400053'},{area:'Bandra',pin:'400050'},{area:'Colaba',pin:'400001'},{area:'Dadar',pin:'400014'},{area:'Kurla',pin:'400070'}],
-            Bengaluru: [{area:'Koramangala',pin:'560034'},{area:'Indiranagar',pin:'560038'},{area:'Whitefield',pin:'560066'},{area:'Jayanagar',pin:'560041'}],
-            Chennai: [{area:'Adyar',pin:'600020'},{area:'Anna Nagar',pin:'600040'},{area:'T Nagar',pin:'600017'},{area:'Velachery',pin:'600042'}],
-            'New Delhi': [{area:'Connaught Place',pin:'110001'},{area:'Lajpat Nagar',pin:'110024'},{area:'Karol Bagh',pin:'110005'},{area:'Saket',pin:'110017'}],
-            Hyderabad: [{area:'Banjara Hills',pin:'500034'},{area:'Jubilee Hills',pin:'500033'},{area:'Hitech City',pin:'500081'},{area:'Secunderabad',pin:'500003'}],
-            Pune: [{area:'Koregaon Park',pin:'411001'},{area:'Baner',pin:'411045'},{area:'Hadapsar',pin:'411028'}],
-            Ahmedabad: [{area:'Navrangpura',pin:'380009'},{area:'Bopal',pin:'380058'},{area:'Vastrapur',pin:'380054'}],
-            Kolkata: [{area:'Park Street',pin:'700016'},{area:'Salt Lake',pin:'700064'},{area:'Gariahat',pin:'700029'}],
-        }
-    }
-};
-
-const COUNTRIES = ['India'];
+import AddressSelector from '../components/AddressSelector';
 
 // ─────────────── Razorpay Loader ───────────────
 const loadRazorpay = () =>
@@ -55,317 +19,274 @@ const loadRazorpay = () =>
         document.body.appendChild(script);
     });
 
-// ─────────────── Main Component ───────────────
 const CheckoutPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { cart, subtotal, clearCart } = useCart();
     const { user } = useAuth();
 
-    const [country, setCountry] = useState('India');
-    const [state, setState] = useState(user?.address?.state || '');
-    const [city, setCity] = useState(user?.address?.city || '');
-    const [area, setArea] = useState('');
-    const [street, setStreet] = useState(user?.address?.street || '');
-    const [zipCode, setZipCode] = useState(user?.address?.zipCode || '');
-
-    const [paymentMethod, setPaymentMethod] = useState('Razorpay');
-    const [promoCode] = useState(location.state?.promoCode || '');
-    const [discountAmount] = useState(location.state?.discountAmount || 0);
+    const [selectedAddress, setSelectedAddress] = useState(null);
     const [loading, setLoading] = useState(false);
 
-
-    const states = ADDRESS_DATA[country]?.states || [];
-    const cities = state
-        ? (ADDRESS_DATA[country]?.cities?.[state] || ADDRESS_DATA[country]?.cities?.[state.replace(' ', '_')] || [])
-        : [];
-    const areas = city ? (ADDRESS_DATA[country]?.areas?.[city] || []) : [];
-
-    const handleAreaChange = (e) => {
-        const selected = areas.find(a => a.area === e.target.value);
-        setArea(e.target.value);
-        if (selected) setZipCode(selected.pin);
-    };
-
-    const shippingCost = subtotal > 4150 ? 0 : 50;
-    const taxable = Math.max(0, subtotal - discountAmount);
-    const tax = taxable * 0.08;
-    const total = Math.max(0, subtotal - discountAmount + shippingCost + tax);
-
-    const buildShippingAddress = () => ({
-        street: `${street}${area ? ', ' + area : ''}`,
-        city,
-        state,
-        zipCode,
-        country,
-    });
-
-    const handleRazorpayPayment = async () => {
-        const loaded = await loadRazorpay();
-        if (!loaded) {
-            toast.error('Failed to load Razorpay. Please check your connection.');
-            return false;
+    // ─────────────── Dynamic Pricing Logic ───────────────
+    const pricing = useMemo(() => {
+        const SELLER_STATE = "Maharashtra";
+        const SPECIAL_CITIES = ["Mumbai", "Pune", "Bangalore", "Delhi", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Surat", "Pune", "Jaipur", "Lucknow", "Patna"];
+        
+        // 1. Base Discount (10% auto discount above 1000)
+        let discount = 0;
+        if (subtotal > 1000) {
+            discount = Math.round(subtotal * 0.10);
         }
 
-        const { data } = await paymentAPI.createOrder(Math.round(total), `order_${Date.now()}`);
-
-        if (data.keyId === 'mock_test_key') {
-            toast.success('Test Mode: Payment Auto-Verified!');
-            return { success: true, paymentId: `mock_pay_${Date.now()}` };
+        // 2. Dynamic Locality/City Discount (Bonus 5% for Special Cities)
+        let areaDiscount = 0;
+        if (selectedAddress && SPECIAL_CITIES.includes(selectedAddress.city)) {
+            areaDiscount = Math.round((subtotal - discount) * 0.05);
         }
 
-        return new Promise((resolve) => {
-            const options = {
-                key: data.keyId,
-                amount: data.amount,
-                currency: data.currency,
-                name: 'Bloom&Buy',
-                description: 'Secure Payment',
-                image: '/logo.png',
-                order_id: data.orderId,
-                prefill: {
-                    name: user?.name || '',
-                    email: user?.email || '',
-                    contact: user?.phone || '',
-                },
-                theme: { color: '#6366f1' },
-                modal: {
-                    ondismiss: () => {
-                        toast.error('Payment cancelled');
-                        resolve({ cancelled: true });
-                    }
-                },
-                handler: async (response) => {
-                    try {
-                        await paymentAPI.verify({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                        });
-                        resolve({ success: true, paymentId: response.razorpay_payment_id });
-                    } catch {
-                        resolve({ success: false });
-                    }
-                },
-            };
+        const totalDiscount = discount + areaDiscount;
 
-            const rzp = new window.Razorpay(options);
-            rzp.open();
-        });
-    };
-
-    const processOrder = async () => {
-        try {
-            await ordersAPI.checkout({
-                shippingAddress: buildShippingAddress(),
-                paymentMethod,
-                promoCode,
-            });
-
-            toast.success('Order placed successfully! 🛍️');
-            await clearCart();
-            navigate('/orders');
-        } catch (error) {
-            toast.error(error.response?.data?.error || 'Failed to place order');
-        } finally {
-            setLoading(false);
+        // 3. Shipping (Free above 500, else calculated by city)
+        let shipping = 0;
+        if (subtotal < 500) {
+            shipping = (selectedAddress?.state === SELLER_STATE) ? 40 : 80;
         }
-    };
 
-    const handleSubmit = async (e) => {
+        // 4. Tax (18% Total GST)
+        const taxableAmount = subtotal - totalDiscount;
+        const taxTotal = Math.round(taxableAmount * 0.18);
+        
+        let cgst = 0, sgst = 0, igst = 0;
+        const isInternal = selectedAddress?.state?.toLowerCase().trim() === SELLER_STATE.toLowerCase();
+
+        if (selectedAddress) {
+            if (isInternal) {
+                cgst = Math.round(taxTotal / 2);
+                sgst = taxTotal - cgst;
+            } else {
+                igst = taxTotal;
+            }
+        } else {
+            // Default/Preview tax
+            igst = taxTotal;
+        }
+
+        const total = subtotal - totalDiscount + taxTotal + shipping;
+
+        return { 
+            subtotal, 
+            discount: totalDiscount, 
+            baseDiscount: discount, 
+            areaDiscount, 
+            shipping, 
+            taxTotal, 
+            cgst, 
+            sgst, 
+            igst, 
+            total 
+        };
+    }, [subtotal, selectedAddress]);
+
+
+    const handleCheckoutAndPay = async (e) => {
         e.preventDefault();
-        if (!street || !city || !state || !zipCode) {
-            toast.error('Please fill in all shipping address fields');
+        if (!selectedAddress) {
+            toast.error('Please select or add a delivery address');
             return;
         }
 
         setLoading(true);
         try {
-            const result = await handleRazorpayPayment();
-            if (result?.cancelled) { setLoading(false); return; }
-            if (!result?.success) {
-                toast.error('Payment verification failed.');
+            // 1. Initiate Order & Payment
+            const { data } = await ordersAPI.checkout({
+                address_id: selectedAddress.id,
+                total: pricing.total
+            });
+
+            if (data.mock) {
+                toast.success('Demo order created successfully.');
+                await clearCart();
+                navigate(`/orders/tracking/${data.order_id}`);
+                return;
+            }
+
+            if (!data.key) {
+                toast.error('Payment gateway configuration is missing. Please contact support.');
                 setLoading(false);
                 return;
             }
-            toast.success('Payment successful! 🎉');
-            await processOrder();
+
+            // 2. Load Razorpay
+            const loaded = await loadRazorpay();
+            if (!loaded) {
+                toast.error('Razorpay library failed to load');
+                setLoading(false);
+                return;
+            }
+
+            // 3. Open Razorpay Modal
+            const options = {
+                key: data.key,
+                amount: data.total * 100,
+                currency: data.currency || 'INR',
+                name: 'Bloom & Buy',
+                description: `Order #${data.order_id}`,
+                order_id: data.razorpay_order_id,
+                prefill: {
+                    name: user?.name || '',
+                    email: user?.email || '',
+                    contact: selectedAddress.phone_number
+                },
+                theme: { color: '#6366f1' },
+                handler: async (response) => {
+                    try {
+                        const verifyRes = await paymentAPI.verify({
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        });
+                        
+                        toast.success('Payment Verified! Order Confirmed. 🎉');
+                        await clearCart();
+                        navigate(`/orders/tracking/${verifyRes.data.order_id}`);
+                    } catch (err) {
+                        toast.error('Payment verification failed. Please contact support.');
+                    }
+                },
+                modal: {
+                    ondismiss: () => {
+                        toast.error('Payment cancelled');
+                        setLoading(false);
+                    }
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+
         } catch (error) {
-            toast.error('Payment failed. Please try again.');
+            toast.error(error.response?.data?.error || 'Failed to initiate checkout');
             setLoading(false);
         }
     };
 
-
-    if (!cart.items || cart.items.length === 0) {
-        return (
-            <div className="main-content">
-                <div className="container checkout-page">
-                    <div className="empty-state">
-                        <div className="empty-state-icon">🛒</div>
-                        <h3>Your cart is empty</h3>
-                        <button className="btn btn-primary" onClick={() => navigate('/products')}>Browse Products</button>
-                    </div>
-                </div>
-            </div>
-        );
+    if (!cart.items?.length) {
+        return <div className="container" style={{ padding: '100px', textAlign: 'center' }}><h2>Empty Cart</h2><button className="btn btn-primary" onClick={() => navigate('/products')}>Shop Now</button></div>;
     }
 
     return (
         <div className="main-content">
-            <div className="container checkout-page">
-                <div className="page-header">
-                    <h1 className="page-title">Checkout</h1>
-                    <p className="page-subtitle">Secure, fast delivery</p>
-                </div>
+            <div className="container" style={{ maxWidth: '1200px', padding: '40px 20px' }}>
+                <h1 className="page-title">Checkout</h1>
+                
+                <div className="checkout-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: '30px' }}>
+                    
+                    <div className="checkout-content">
+                        <section className="checkout-section">
+                            <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <FiPackage color="var(--action)" /> Delivery Address
+                            </h3>
+                            <AddressSelector 
+                                onSelect={(addr) => setSelectedAddress(addr)} 
+                                selectedId={selectedAddress?.id} 
+                            />
+                        </section>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="checkout-layout">
-                        <div>
-                            {/* ── Shipping Address ── */}
-                            <div className="checkout-section">
-                                <h3><span className="step-number">1</span> <FiMapPin /> Shipping Address</h3>
-
-                                <div className="form-group">
-                                    <label className="form-label">Country</label>
-                                    <select className="form-select" value={country} onChange={e => { setCountry(e.target.value); setState(''); setCity(''); setArea(''); setZipCode(''); }}>
-                                        {COUNTRIES.map(c => <option key={c}>{c}</option>)}
-                                    </select>
+                        <section className="checkout-section" style={{ marginTop: '30px' }}>
+                            <h3 style={{ marginBottom: '16px' }}>💳 Payment Method</h3>
+                            <div className="glass-card payment-card selected" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div className="icon-box" style={{ background: 'var(--action-dim)', padding: '10px', borderRadius: '12px' }}>
+                                    <FiSmartphone size={24} color="var(--action)" />
                                 </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <div className="form-group">
-                                        <label className="form-label">State</label>
-                                        <select className="form-select" value={state} onChange={e => { setState(e.target.value); setCity(''); setArea(''); setZipCode(''); }} required>
-                                            <option value="">Select State</option>
-                                            {states.map(s => <option key={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">City</label>
-                                        <select className="form-select" value={city} onChange={e => { setCity(e.target.value); setArea(''); setZipCode(''); }} required disabled={!state}>
-                                            <option value="">Select City</option>
-                                            {cities.map(c => <option key={c}>{c}</option>)}
-                                        </select>
-                                    </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: '700' }}>Razorpay Secure Checkout</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>UPI, Credit/Debit Cards, NetBanking, Wallets</div>
                                 </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <div className="form-group">
-                                        <label className="form-label">Area / Locality</label>
-                                        <input 
-                                            className="form-input" 
-                                            list="area-options" 
-                                            placeholder="Enter your Area" 
-                                            value={area} 
-                                            onChange={handleAreaChange} 
-                                            disabled={!city}
-                                        />
-                                        <datalist id="area-options">
-                                            {areas.map(a => <option key={a.area} value={a.area} />)}
-                                        </datalist>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">PIN Code</label>
-                                        <input className="form-input" type="text" placeholder="Auto-filled from area" value={zipCode}
-                                            onChange={e => setZipCode(e.target.value)} required />
-                                    </div>
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="form-label">Street / House / Flat</label>
-                                    <input className="form-input" type="text" placeholder="House No, Building, Street" value={street}
-                                        onChange={e => setStreet(e.target.value)} required />
-                                </div>
+                                <FiCheck color="var(--action)" size={20} />
                             </div>
+                        </section>
+                    </div>
 
-                            {/* ── Payment Method ── */}
-                            <div className="checkout-section">
-                                <h3><span className="step-number">2</span> <FiCreditCard /> Payment Method</h3>
-                                <div className="payment-methods">
-                                    <label className={`payment-method ${paymentMethod === 'Razorpay' ? 'selected' : ''}`}>
-                                        <input type="radio" name="payment" value="Razorpay"
-                                            checked={paymentMethod === 'Razorpay'}
-                                            onChange={e => setPaymentMethod(e.target.value)} />
-                                        <FiSmartphone />
-                                        <div>
-                                            <div style={{ fontWeight: '600' }}>Razorpay</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>UPI · Cards · NetBanking · QR</div>
-                                        </div>
-                                        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', background: '#6366f1', color: '#fff', padding: '2px 8px', borderRadius: '99px' }}>Recommended</span>
-                                    </label>
-
-                                    {['Credit Card', 'Debit Card'].map(method => (
-                                        <label key={method} className={`payment-method ${paymentMethod === method ? 'selected' : ''}`}>
-                                            <input type="radio" name="payment" value={method}
-                                                checked={paymentMethod === method}
-                                                onChange={e => setPaymentMethod(e.target.value)} />
-                                            <FiCreditCard />
-                                            <div>
-                                                <div style={{ fontWeight: '600' }}>{method}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Secure payment</div>
-                                            </div>
-                                        </label>
-                                    ))}
-
-                                    <label className={`payment-method ${paymentMethod === 'Cash on Delivery' ? 'selected' : ''}`}>
-                                        <input type="radio" name="payment" value="Cash on Delivery"
-                                            checked={paymentMethod === 'Cash on Delivery'}
-                                            onChange={e => setPaymentMethod(e.target.value)} />
-                                        <FiPackage />
-                                        <div>
-                                            <div style={{ fontWeight: '600' }}>Cash on Delivery</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Pay when you receive</div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ── Order Summary ── */}
-                        <div className="cart-summary">
-                            <h3>Order Summary</h3>
-                            <div style={{ marginBottom: '16px' }}>
-                                {cart.items.map(item => item.product && (
-                                    <div key={item._id} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem'
-                                    }}>
-                                        <span style={{ flex: 1 }}>{item.product.name} × {item.quantity}</span>
-                                        <span style={{ fontWeight: '600' }}>{formatINR((item.product.price || 0) * item.quantity)}</span>
+                    <aside className="order-sidebar">
+                        <div className="glass-card summary-card" style={{ padding: '24px', position: 'sticky', top: '100px' }}>
+                            <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '15px' }}>Order Summary</h3>
+                            
+                            <div className="item-list" style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '20px' }}>
+                                {cart.items.map(item => (
+                                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
+                                        <span style={{ color: 'var(--text-main)' }}>{item.product.name} <small style={{ color: 'var(--text-muted)' }}>×{item.quantity}</small></span>
+                                        <span style={{ fontWeight: '500' }}>{formatINR(item.product.price * item.quantity)}</span>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="summary-row"><span>Subtotal</span><span>{formatINR(subtotal)}</span></div>
-                            {discountAmount > 0 && (
-                                <div className="summary-row" style={{ color: 'var(--success)' }}>
-                                    <span>Promo Discount</span><span>-{formatINR(discountAmount)}</span>
-                                </div>
-                            )}
-                            <div className="summary-row">
-                                <span>Shipping</span>
-                                <span style={{ color: shippingCost === 0 ? 'var(--success)' : '' }}>
-                                    {shippingCost === 0 ? 'FREE' : formatINR(shippingCost)}
-                                </span>
-                            </div>
-                            <div className="summary-row"><span>Tax (8%)</span><span>{formatINR(tax)}</span></div>
-                            <div className="summary-row total"><span>Total</span><span>{formatINR(total)}</span></div>
+                            <div className="pricing-breakdown" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div className="summary-row"><span>Subtotal</span><span>{formatINR(pricing.subtotal)}</span></div>
+                                
+                                {pricing.baseDiscount > 0 && (
+                                     <div className="summary-row" style={{ color: 'var(--success)' }}>
+                                         <span>Volume Discount (10%)</span>
+                                         <span>-{formatINR(pricing.baseDiscount)}</span>
+                                     </div>
+                                 )}
+                                 {pricing.areaDiscount > 0 && (
+                                     <div className="summary-row" style={{ color: 'var(--success)' }}>
+                                         <span>Locality Bonus (5%)</span>
+                                         <span>-{formatINR(pricing.areaDiscount)}</span>
+                                     </div>
+                                 )}
 
-                            <button type="submit" className="btn btn-primary btn-full btn-lg"
-                                disabled={loading} style={{ marginTop: '24px' }}>
-                                {loading ? 'Processing...' : `Pay ${formatINR(total)}`}
+                                {pricing.igst > 0 ? (
+                                    <div className="summary-row">
+                                        <span>IGST (18%)</span>
+                                        <span>{formatINR(pricing.igst)}</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="summary-row">
+                                            <span>CGST (9%)</span>
+                                            <span>{formatINR(pricing.cgst)}</span>
+                                        </div>
+                                        <div className="summary-row">
+                                            <span>SGST (9%)</span>
+                                            <span>{formatINR(pricing.sgst)}</span>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="summary-row">
+                                    <span>Shipping</span>
+                                    <span style={{ color: pricing.shipping === 0 ? 'var(--success)' : 'inherit' }}>
+                                        {pricing.shipping === 0 ? 'FREE' : formatINR(pricing.shipping)}
+                                    </span>
+                                </div>
+
+                                <div className="total-row" style={{ borderTop: '1px solid var(--border)', paddingTop: '15px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: '700', fontSize: '1.2rem' }}>Total</span>
+                                    <span style={{ fontWeight: '800', fontSize: '1.3rem', color: 'var(--action)' }}>{formatINR(pricing.total)}</span>
+                                </div>
+                            </div>
+
+                            <button 
+                                className="btn btn-primary btn-full btn-lg" 
+                                style={{ marginTop: '24px', height: '56px', fontSize: '1.1rem' }} 
+                                disabled={loading || !selectedAddress}
+                                onClick={handleCheckoutAndPay}
+                            >
+                                {loading ? 'Processing...' : `Pay ${formatINR(pricing.total)}`}
                             </button>
 
-                            <div style={{ textAlign: 'center', marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                <FiCheck size={14} color="var(--success)" />
-                                Secure checkout · 256-bit SSL encrypted
-                            </div>
+                            {!selectedAddress && (
+                                <p style={{ fontSize: '0.75rem', color: '#ff4d4d', textAlign: 'center', marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                    <FiInfo size={12} /> Please select an address to continue
+                                </p>
+                            )}
                         </div>
-                    </div>
-                </form>
-            </div>
+                    </aside>
 
+                </div>
+            </div>
         </div>
     );
 };

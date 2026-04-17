@@ -53,9 +53,10 @@ const ProductsPage = () => {
 
       if (signal.aborted) return;
 
-      // Backend now filters images, so we can use products directly
-      setProducts(data.products || []);
-      setPagination(data.pagination || {});
+      // Handle both paginated and flat responses
+      const productsList = Array.isArray(data) ? data : (data.products || []);
+      setProducts(productsList);
+      setPagination(data.pagination || { pages: 1 });
     } catch (error) {
       if (error.name === 'CanceledError' || error.name === 'AbortError') {
         // Ignored cancellation
@@ -281,7 +282,7 @@ const ProductsPage = () => {
             <div className="products-grid">
               {products.map((product) => (
                 <ProductCard
-                  key={product._id}
+                  key={product.id || product._id}
                   product={product}
                 />
               ))}
