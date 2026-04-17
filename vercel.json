@@ -34,6 +34,18 @@
       "destination": "frontend/assets/$1"
     },
     {
+      "source": "/logo.png",
+      "destination": "frontend/logo.png"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "frontend/manifest.json"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "frontend/favicon.ico"
+    },
+    {
       "source": "/(.*)",
       "destination": "frontend/index.html"
     }
