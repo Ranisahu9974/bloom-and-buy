@@ -23,10 +23,12 @@ except Exception:
     startup_error = traceback.format_exc()
 
 def handler(environ, start_response):
-    # 1. Simple Probe: If Python itself is running, this will work
-    if environ.get('PATH_INFO') == '/api/health-check':
+    path = environ.get('PATH_INFO', '')
+    
+    # 1. Simple Probe: Test if Python is alive
+    if path == '/api/health-check' or path == '/health-check':
         start_response('200 OK', [('Content-Type', 'text/plain')])
-        return [b"Django Python runtime is alive!"]
+        return [b"Django Python runtime is alive! Path: " + path.encode('utf-8')]
 
     # 2. Show startup error if Django failed to initialize
     if not application:
