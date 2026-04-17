@@ -12,29 +12,30 @@
       "config": { "distDir": "dist" }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "Backend/core/wsgi.py"
+      "source": "/api/(.*)",
+      "destination": "Backend/core/wsgi.py"
     },
     {
-      "src": "/admin/(.*)",
-      "dest": "Backend/core/wsgi.py"
+      "source": "/admin/(.*)",
+      "destination": "Backend/core/wsgi.py"
     },
     {
-      "src": "/static/(.*)",
-      "dest": "/static/$1"
+      "source": "/static/(.*)",
+      "destination": "Backend/staticfiles/$1"
     },
     {
-      "src": "/media/(.*)",
-      "dest": "Backend/media/$1"
+      "source": "/media/(.*)",
+      "destination": "Backend/media/$1"
     },
     {
-      "handle": "filesystem"
+      "source": "/assets/(.*)",
+      "destination": "frontend/assets/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "frontend/index.html"
     }
   ]
 }
